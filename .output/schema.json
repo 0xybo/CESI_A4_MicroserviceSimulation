@@ -1,0 +1,185 @@
+{
+    "$defs": {
+        "ContainerConfig": {
+            "properties": {
+                "services": {
+                    "description": "Services in this container",
+                    "patternProperties": {
+                        "^[a-zA-Z0-9_]+$": {
+                            "$ref": "#/$defs/ContainerServiceConfig"
+                        }
+                    },
+                    "required": true,
+                    "title": "Services",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "services"
+            ],
+            "title": "ContainerConfig",
+            "type": "object"
+        },
+        "ContainerServiceConfig": {
+            "properties": {
+                "canRestart": {
+                    "description": "Whether the service can restart",
+                    "required": true,
+                    "title": "Canrestart",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "canRestart"
+            ],
+            "title": "ContainerServiceConfig",
+            "type": "object"
+        },
+        "DependencyConfig": {
+            "properties": {
+                "callRate": {
+                    "description": "Call rate as a decimal between 0 and 1",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "required": true,
+                    "title": "Callrate",
+                    "type": "number"
+                },
+                "stopOnError": {
+                    "description": "Whether to stop on error",
+                    "required": true,
+                    "title": "Stoponerror",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "callRate",
+                "stopOnError"
+            ],
+            "title": "DependencyConfig",
+            "type": "object"
+        },
+        "MicroserviceConfig": {
+            "properties": {
+                "dependencies": {
+                    "description": "Dependencies of this microservice",
+                    "patternProperties": {
+                        "^[a-zA-Z0-9_]+$": {
+                            "$ref": "#/$defs/DependencyConfig"
+                        }
+                    },
+                    "required": true,
+                    "title": "Dependencies",
+                    "type": "object"
+                },
+                "errorRate": {
+                    "description": "Error rate as a decimal between 0 and 1",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "required": true,
+                    "title": "Errorrate",
+                    "type": "number"
+                },
+                "workDifficulty": {
+                    "description": "Work difficulty level",
+                    "minimum": 0.0,
+                    "required": true,
+                    "title": "Workdifficulty",
+                    "type": "number"
+                },
+                "delay": {
+                    "default": 0,
+                    "description": "Delay in milliseconds",
+                    "minimum": 0,
+                    "required": true,
+                    "title": "Delay",
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "dependencies",
+                "errorRate",
+                "workDifficulty"
+            ],
+            "title": "MicroserviceConfig",
+            "type": "object"
+        },
+        "ServiceConfig": {
+            "properties": {
+                "microservices": {
+                    "description": "Microservices in this service",
+                    "patternProperties": {
+                        "^[a-zA-Z0-9_]+$": {
+                            "$ref": "#/$defs/ServiceMicroserviceConfig"
+                        }
+                    },
+                    "required": true,
+                    "title": "Microservices",
+                    "type": "object"
+                }
+            },
+            "required": [
+                "microservices"
+            ],
+            "title": "ServiceConfig",
+            "type": "object"
+        },
+        "ServiceMicroserviceConfig": {
+            "properties": {
+                "canRestart": {
+                    "description": "Whether the microservice can restart",
+                    "required": true,
+                    "title": "Canrestart",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "canRestart"
+            ],
+            "title": "ServiceMicroserviceConfig",
+            "type": "object"
+        }
+    },
+    "properties": {
+        "microservices": {
+            "description": "All microservices in the simulation",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "$ref": "#/$defs/MicroserviceConfig"
+                }
+            },
+            "required": true,
+            "title": "Microservices",
+            "type": "object"
+        },
+        "services": {
+            "description": "All services in the simulation",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "$ref": "#/$defs/ServiceConfig"
+                }
+            },
+            "required": true,
+            "title": "Services",
+            "type": "object"
+        },
+        "containers": {
+            "description": "All containers in the simulation",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "$ref": "#/$defs/ContainerConfig"
+                }
+            },
+            "required": true,
+            "title": "Containers",
+            "type": "object"
+        }
+    },
+    "required": [
+        "microservices",
+        "services",
+        "containers"
+    ],
+    "title": "SimulationConfig",
+    "type": "object"
+}
