@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "microservice-simulation"
+version = "0.1.0"
+description = "Simulates distributed microservices architectures to study service granularity and containerization impact on performance"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pydantic>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pylint>=2.17", "black>=23.0", "pytest>=7.0"]
+
+[tool.pylint.messages_control]
+disable = [
+    "C0103", # invalid-name: Module name doesn't conform to snake_case naming style
+    "C0114", # too-few-public-methods: Class has too few public methods (1/2)
+]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

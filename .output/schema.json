@@ -9,7 +9,6 @@
                             "$ref": "#/$defs/ContainerServiceConfig"
                         }
                     },
-                    "required": true,
                     "title": "Services",
                     "type": "object"
                 }
@@ -24,7 +23,6 @@
             "properties": {
                 "canRestart": {
                     "description": "Whether the service can restart",
-                    "required": true,
                     "title": "Canrestart",
                     "type": "boolean"
                 }
@@ -41,13 +39,11 @@
                     "description": "Call rate as a decimal between 0 and 1",
                     "maximum": 1.0,
                     "minimum": 0.0,
-                    "required": true,
                     "title": "Callrate",
                     "type": "number"
                 },
                 "stopOnError": {
                     "description": "Whether to stop on error",
-                    "required": true,
                     "title": "Stoponerror",
                     "type": "boolean"
                 }
@@ -68,7 +64,6 @@
                             "$ref": "#/$defs/DependencyConfig"
                         }
                     },
-                    "required": true,
                     "title": "Dependencies",
                     "type": "object"
                 },
@@ -76,14 +71,12 @@
                     "description": "Error rate as a decimal between 0 and 1",
                     "maximum": 1.0,
                     "minimum": 0.0,
-                    "required": true,
                     "title": "Errorrate",
                     "type": "number"
                 },
                 "workDifficulty": {
                     "description": "Work difficulty level",
                     "minimum": 0.0,
-                    "required": true,
                     "title": "Workdifficulty",
                     "type": "number"
                 },
@@ -91,7 +84,6 @@
                     "default": 0,
                     "description": "Delay in milliseconds",
                     "minimum": 0,
-                    "required": true,
                     "title": "Delay",
                     "type": "integer"
                 }
@@ -113,7 +105,6 @@
                             "$ref": "#/$defs/ServiceMicroserviceConfig"
                         }
                     },
-                    "required": true,
                     "title": "Microservices",
                     "type": "object"
                 }
@@ -128,7 +119,6 @@
             "properties": {
                 "canRestart": {
                     "description": "Whether the microservice can restart",
-                    "required": true,
                     "title": "Canrestart",
                     "type": "boolean"
                 }
@@ -148,7 +138,6 @@
                     "$ref": "#/$defs/MicroserviceConfig"
                 }
             },
-            "required": true,
             "title": "Microservices",
             "type": "object"
         },
@@ -159,7 +148,6 @@
                     "$ref": "#/$defs/ServiceConfig"
                 }
             },
-            "required": true,
             "title": "Services",
             "type": "object"
         },
@@ -170,7 +158,6 @@
                     "$ref": "#/$defs/ContainerConfig"
                 }
             },
-            "required": true,
             "title": "Containers",
             "type": "object"
         }
