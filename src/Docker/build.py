@@ -8,10 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 from src.Docker.platform import DockerPlatform
+from src.Common.Utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def build_docker_compose_file(
-    config_path: str | Path = "config-test.json", output_dir: str = ".output"
+    config_path: str | Path = "config-test.json", output_dir: str | Path = ".output"
 ) -> None:
     """Build Docker Compose configuration file.
 
@@ -24,7 +27,12 @@ def build_docker_compose_file(
     Raises:
         RuntimeError: If Docker is not available or build fails.
     """
+    logger.info(
+        "Building Docker Compose configuration: config=%s, output_dir=%s", config_path, output_dir
+    )
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    logger.debug("Output directory created/verified: %s", output_dir)
     platform = DockerPlatform()
     platform.build(str(config_path), str(output_dir))
+    logger.info("Docker Compose build completed successfully")

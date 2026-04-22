@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from src.Common.Microservice.metrics import ExecutionMetrics
+from src.Common.Utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -33,4 +36,5 @@ class ExecutionContext:
         """
         if name not in self.metrics:
             self.metrics[name] = ExecutionMetrics()
+            logger.debug(f"Created metrics for microservice: {name}")
         return self.metrics[name]

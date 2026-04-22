@@ -24,8 +24,11 @@ from argparse import ArgumentParser
 
 from src.Config.cli import config_parser, main as config_main
 from src.Common.Utils.error import print_error
+from src.Common.Utils.logger import get_logger
 from src.Python.build import build as build_python
 from src.Docker.build import build_docker_compose_file as build_docker
+
+logger = get_logger(__name__)
 
 
 def main():
@@ -33,6 +36,7 @@ def main():
 
     Parses arguments and dispatches to appropriate command handlers.
     """
+    logger.debug("Initializing argument parser")
     parser = ArgumentParser(description="Microservice Simulation Configuration Tool")
     command_parser = parser.add_subparsers(dest="command", required=True)
 
@@ -71,30 +75,43 @@ def main():
     )
 
     args = parser.parse_args()
+    logger.info(f"Command received: {args.command}")
 
     try:
         match args.command:
             case "config":
+                logger.info("Processing config command")
                 config_main(args)
             case "build":
                 env = args.environment
+                logger.info(f"Processing build command for environment: {env}")
                 if env == "python":
+                    logger.info("Building Python environment...")
                     print("Building Python environment...")
                     build_python(args.config, args.output)
+                    logger.info("✓ Python environment built successfully")
                     print("✓ Python environment built successfully")
                 elif env == "docker":
+                    logger.info("Building Docker environment...")
                     print("Building Docker environment...")
                     build_docker(args.config, args.output)
+                    logger.info("✓ Docker environment built successfully")
                     print("✓ Docker environment built successfully")
                 else:
                     # Build both when no environment specified
+                    logger.info("Building both Python and Docker environments")
                     print("Building Python environment...")
+                    logger.debug("Building Python environment")
                     build_python(args.config, args.output)
+                    logger.info("✓ Python environment built successfully")
                     print("✓ Python environment built successfully")
                     print("Building Docker environment...")
+                    logger.debug("Building Docker environment")
                     build_docker(args.config, args.output)
+                    logger.info("✓ Docker environment built successfully")
                     print("✓ Docker environment built successfully")
             case _:
+                logger.error(f"Unknown command: {args.command}")
                 print_error("Unknown command. Use --help for usage information.")
     except (
         KeyError,

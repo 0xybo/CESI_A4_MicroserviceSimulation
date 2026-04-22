@@ -7,6 +7,9 @@ from src.Common.Container.result import ContainerRunResult
 from src.Common.Microservice.context import ExecutionContext
 from src.Common.Service.service import Service
 from src.Common.Service.result import ServiceRunResult
+from src.Common.Utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class Container:
@@ -26,6 +29,9 @@ class Container:
         self.name = name
         self.config = config
         self.services = services
+        logger.debug(
+            f"Container '{name}' initialized with {len(services)} services: {list(services.keys())}"
+        )
 
     def execute(self, context: ExecutionContext, request_count: int) -> ContainerRunResult:
         """Execute all services in the container.
@@ -37,11 +43,22 @@ class Container:
         Returns:
             A ContainerRunResult with aggregated service results.
         """
+        logger.info(
+            f"Container '{self.name}' starting execution with {len(self.config.services)} services"
+        )
         service_results: list[ServiceRunResult] = []
 
         for service_name in self.config.services:
-            service_results.append(self.services[service_name].execute(context, request_count))
+            logger.debug(f"Container '{self.name}' executing service '{service_name}'")
+            result = self.services[service_name].execute(context, request_count)
+            service_results.append(result)
+            logger.debug(
+                f"Container '{self.name}' service '{service_name}' completed: success={result.success}, failures={result.failures}"
+            )
 
+        logger.info(
+            f"Container '{self.name}' execution completed with {len(service_results)} service results"
+        )
         return ContainerRunResult(
             container_name=self.name,
             service_results=service_results,

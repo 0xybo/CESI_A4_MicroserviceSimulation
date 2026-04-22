@@ -91,7 +91,7 @@ class Platform(ABC):
             RuntimeError: If execution fails.
         """
 
-    def initialize_output_manager(self, base_output_dir: str | None = None) -> Path:
+    def initialize_output_manager(self, base_output_dir: str | Path | None = None) -> Path:
         """Initialize the test output manager and create timestamped directory.
 
         Args:

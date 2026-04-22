@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from src.Config import SimulationConfig
+from src.Common.Utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class TestOutputManager:
@@ -37,6 +40,7 @@ class TestOutputManager:
         """
         self.platform_name = platform_name
         self.test_dir: Path | None = None
+        logger.debug(f"TestOutputManager initialized for platform: {platform_name}")
 
     def create_test_directory(self, base_dir: Path = Path(".output")) -> Path:
         """Create and return a timestamped test directory.
@@ -49,6 +53,7 @@ class TestOutputManager:
         Returns:
             Path to the created test directory.
         """
+        logger.debug(f"Creating test directory in: {base_dir}")
         base_dir = Path(base_dir)
         base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -58,6 +63,7 @@ class TestOutputManager:
         self.test_dir = base_dir / test_dir_name
 
         self.test_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Test directory created: {self.test_dir}")
         return self.test_dir
 
     def get_test_directory(self) -> Path:
@@ -91,10 +97,12 @@ class TestOutputManager:
         """
         test_dir = self.get_test_directory()
         config_file = test_dir / "config.json"
+        logger.debug(f"Saving configuration to: {config_file}")
 
         # Convert Pydantic model to dict and save
         config_dict = config.model_dump(by_alias=True)
         config_file.write_text(json.dumps(config_dict, indent=2) + "\n", encoding="utf-8")
+        logger.info(f"Configuration saved successfully: {config_file}")
 
         return config_file
 
@@ -113,6 +121,7 @@ class TestOutputManager:
         test_dir = self.get_test_directory()
         container_dir = test_dir / "containers" / container_name
         container_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Container directory created: {container_dir}")
         return container_dir
 
     def create_service_script(
@@ -129,8 +138,10 @@ class TestOutputManager:
             Path to the created script file.
         """
         container_dir = self.create_container_directory(container_name)
-        script_file = container_dir / f"{service_name}.sh"
+        script_file = container_dir / f"{service_name}.py"
+        logger.debug(f"Creating service script: {script_file}")
         script_file.write_text(script_content, encoding="utf-8")
+        logger.debug(f"Service script created: {script_file}")
         return script_file
 
     def save_results(self, results: dict[str, Any]) -> Path:

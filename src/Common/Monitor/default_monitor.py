@@ -9,6 +9,9 @@ from typing import Any
 from src.Common.Monitor.monitor import Monitor
 from src.Common.Monitor.metric import Metric
 from src.Common.Monitor.execution_record import ExecutionRecord
+from src.Common.Utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class DefaultMonitor(Monitor):
@@ -22,6 +25,7 @@ class DefaultMonitor(Monitor):
         """Initialize the default monitor."""
         self.metrics: list[Metric] = []
         self.executions: list[ExecutionRecord] = []
+        logger.debug("DefaultMonitor initialized")
 
     def record_metric(self, metric: Metric) -> None:
         """Record a single metric.
@@ -30,6 +34,7 @@ class DefaultMonitor(Monitor):
             metric: Metric to record.
         """
         self.metrics.append(metric)
+        logger.debug(f"Recorded metric for microservice: {metric.microservice_name}")
 
     def record_execution(self, execution_record: ExecutionRecord) -> None:
         """Record a complete execution run.
@@ -38,6 +43,9 @@ class DefaultMonitor(Monitor):
             execution_record: Full execution record to store.
         """
         self.executions.append(execution_record)
+        logger.debug(
+            f"Recorded execution: {len(self.metrics)} metrics, {len(self.executions)} executions total"
+        )
 
     def export_results(self, format: str = "json") -> str:
         """Export all recorded data.
@@ -52,8 +60,12 @@ class DefaultMonitor(Monitor):
             ValueError: If format is not "json".
         """
         if format != "json":
+            logger.error(f"Unsupported export format: {format}. Use 'json'.")
             raise ValueError(f"Unsupported export format: {format}. Use 'json'.")
 
+        logger.debug(
+            f"Exporting results: {len(self.metrics)} metrics, {len(self.executions)} executions"
+        )
         data = {
             "metrics": [m.to_dict() for m in self.metrics],
             "executions": [e.to_dict() for e in self.executions],

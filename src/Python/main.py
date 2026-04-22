@@ -14,6 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from src.Python.platform import PythonPlatform
+from src.Common.Utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 # Legacy compatibility functions - delegate to PythonPlatform
@@ -74,20 +77,30 @@ def main() -> int:
     Returns:
         Exit code (0 on success, 1 on failure).
     """
+    logger.info("Starting Python simulation executor")
     args = parse_args()
+    logger.info(f"Arguments parsed: config={args.config}, requests={args.requests}, workers={args.workers}, output={args.output}")
+    
     if args.requests <= 0:
+        logger.error(f"Invalid requests value: {args.requests}. Must be > 0")
         raise ValueError("--requests must be > 0")
     if args.workers <= 0:
+        logger.error(f"Invalid workers value: {args.workers}. Must be > 0")
         raise ValueError("--workers must be > 0")
 
+    logger.debug(f"Running simulation with config={args.config}, requests={args.requests}, workers={args.workers}")
     result = run_simulation(args.config, args.requests, args.workers)
     json_output = json.dumps(result, indent=2)
 
     if args.output is not None:
+        logger.info(f"Writing results to file: {args.output}")
         args.output.write_text(json_output + "\n", encoding="utf-8")
+        logger.info(f"Results written successfully to {args.output}")
     else:
+        logger.debug("Writing results to stdout")
         print(json_output)
 
+    logger.info("Python simulation executor completed successfully")
     return 0
 
 

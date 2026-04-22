@@ -168,3 +168,29 @@ python -m Docker.main --config config-test.json --output Docker/docker-compose.g
 ```
 
 Le fichier genere decrit les conteneurs logiques declares dans la configuration.
+
+## Logging
+
+The application includes a comprehensive logging system that tracks execution across all components:
+
+- **Log Location**: `.logs/` folder in the project root
+- **Log Levels**: DEBUG, INFO, WARNING, ERROR
+- **Files**:
+    - `simulation_YYYYMMDD_HHMMSS.log` - Complete logs at all levels
+    - `errors_YYYYMMDD_HHMMSS.log` - Errors and warnings only
+    - Console output - INFO level and above
+
+For detailed logging documentation and usage examples, see [LOGGING.md](LOGGING.md)
+
+### View Logs
+
+```bash
+# View latest simulation log
+tail -f .logs/simulation_*.log
+
+# View errors only
+tail -f .logs/errors_*.log
+
+# Search for specific events
+grep "microservice_name" .logs/*.log
+```
