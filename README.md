@@ -1,4 +1,4 @@
-> [!warning] Attention
+> [!WARNING]
 > Ce projet est massivement "vibe codé" (c'est à dire que le code a été écrit majoritaire par un outil IA, en l'occurence, Github Copilot). Par conséquent, je recommande fortement de ne pas se baser sur ce projet. En effet, je ne connais pas tous les détails de son implémentation, et il est fort probable que le code contienne des erreurs, des incohérences, ou des choix d'implémentation discutables. De plus, le code généré par une IA peut être difficile à comprendre et à maintenir, surtout si vous n'avez pas une connaissance approfondie du projet.
 >
 > J'ai réalisé ce projet dans le cadre d'un module d'enseignement en école d'ingénieur, et il a été conçu trop rapidement et principalement pour illustrer des concepts et des idées, plutôt que pour être utilisé comme une base de code solide.
