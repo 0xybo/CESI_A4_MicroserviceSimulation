@@ -1,0 +1,7 @@
+timestamp,event_type,service_name,request_index,failed,request_duration_ms,resource_usage_percent,mean_request_duration_ms,mean_resource_usage_percent
+2026-05-04T00:16:41.695+00:00,request,ServiceA,2,0,988.031,0.0,988.031,0.0
+2026-05-04T00:16:41.741+00:00,request,ServiceA,4,0,1033.21,0.0,1010.62,0.0
+2026-05-04T00:16:41.744+00:00,request,ServiceA,1,0,1035.915,0.0,1019.052,0.0
+2026-05-04T00:16:41.749+00:00,request,ServiceA,3,0,1041.681,0.0,1024.709,0.0
+2026-05-04T00:16:41.757+00:00,request,ServiceA,5,0,1049.912,0.0,1029.75,0.0
+2026-05-04T00:16:43.370+00:00,resource,,,,,0.06,1029.75,0.06

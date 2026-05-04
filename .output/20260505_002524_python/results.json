@@ -1,0 +1,96 @@
+{
+  "platform": "python",
+  "config": "test_configs\\1_monolithic.config.json",
+  "requestCount": 10,
+  "workers": 1,
+  "totalElapsedMs": 297.762,
+  "containers": [
+    {
+      "container": "ContainerA",
+      "elapsedMs": 297.423,
+      "services": [
+        {
+          "name": "ServiceA",
+          "calls": 10,
+          "success": 10,
+          "failures": 0,
+          "successRate": 1.0
+        }
+      ],
+      "microservices": {
+        "A": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 70,
+          "avgLatencyMs": 29.2788
+        },
+        "B": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 10,
+          "avgLatencyMs": 3.2508
+        },
+        "C": {
+          "calls": 30,
+          "failures": 0,
+          "dependencyCalls": 0,
+          "avgLatencyMs": 1.46
+        },
+        "D": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 40,
+          "avgLatencyMs": 8.6786
+        },
+        "E": {
+          "calls": 20,
+          "failures": 0,
+          "dependencyCalls": 0,
+          "avgLatencyMs": 1.4883
+        },
+        "F": {
+          "calls": 20,
+          "failures": 0,
+          "dependencyCalls": 0,
+          "avgLatencyMs": 1.5242
+        },
+        "G": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 0,
+          "avgLatencyMs": 1.4971
+        },
+        "H": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 10,
+          "avgLatencyMs": 3.4271
+        },
+        "I": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 0,
+          "avgLatencyMs": 1.4702
+        },
+        "J": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 20,
+          "avgLatencyMs": 12.4032
+        },
+        "K": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 0,
+          "avgLatencyMs": 1.4387
+        },
+        "L": {
+          "calls": 10,
+          "failures": 0,
+          "dependencyCalls": 0,
+          "avgLatencyMs": 1.4608
+        }
+      }
+    }
+  ]
+}
