@@ -212,8 +212,3 @@ pip-selfcheck.json
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,virtualenv,visualstudiocode
-
-
-.output
-config_test.json
-AGENTS.md
