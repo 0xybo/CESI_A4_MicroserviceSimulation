@@ -3,7 +3,7 @@
 from src.__main__ import main
 from src.Common.Utils.logger import setup_logger
 
-logger = setup_logger("__main__")
+logger = setup_logger(__name__)
 
 if __name__ == "__main__":
     logger.info("Starting Microservice Simulation Application")

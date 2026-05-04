@@ -14,12 +14,14 @@ from pathlib import Path
 from typing import Any
 
 from src.Common.Platform import Platform
-from src.Config import SimulationConfig, load_simulation_config
 from src.Common.Container.container import Container
 from src.Common.Microservice.microservice import Microservice
 from src.Common.Microservice.context import ExecutionContext
 from src.Common.Service.service import Service
-from src.Common.TestOutput import TestOutputManager
+from src.Common.Utils.logger import get_logger
+from src.Config import SimulationConfig, load_simulation_config
+
+logger = get_logger(__name__)
 
 # Access ThreadPoolExecutor through module to avoid false linter positives
 ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor
@@ -72,17 +74,17 @@ class PythonPlatform(Platform):
         # Validate config file
         try:
             config = load_simulation_config(config_path)
-            print(f"✓ Configuration valid: {config_path}")
-            print(f"✓ Containers: {len(config.containers)}")
-            print(f"✓ Services: {len(config.services)}")
-            print(f"✓ Microservices: {len(config.microservices)}")
+            logger.info("Configuration valid: %s", config_path)
+            logger.info("Containers: %d", len(config.containers))
+            logger.info("Services: %d", len(config.services))
+            logger.info("Microservices: %d", len(config.microservices))
         except Exception as e:
             raise RuntimeError(f"Failed to validate configuration: {e}") from e
 
         # Initialize test output manager
         test_dir = self.initialize_output_manager(output_dir)
         self.output_manager.save_config(config)
-        print(f"✓ Test directory created: {test_dir}")
+        logger.info("Test directory created: %s", test_dir)
 
     def execute(
         self,
@@ -113,7 +115,10 @@ class PythonPlatform(Platform):
             RuntimeError: If execution fails.
         """
         logger.info(
-            f"Starting simulation execution: config={config_path}, requests={request_count}, workers={workers}"
+            "Starting simulation execution: config=%s, requests=%s, workers=%s",
+            config_path,
+            request_count,
+            workers,
         )
         if output_dir is None:
             output_dir = ".output"
@@ -123,10 +128,13 @@ class PythonPlatform(Platform):
 
         try:
             config_path = Path(config_path)
-            logger.debug(f"Loading simulation configuration from: {config_path}")
+            logger.debug("Loading simulation configuration from: %s", config_path)
             config = load_simulation_config(config_path)
             logger.info(
-                f"Configuration loaded: containers={len(config.containers)}, services={len(config.services)}, microservices={len(config.microservices)}"
+                "Configuration loaded: containers=%d, services=%d, microservices=%d",
+                len(config.containers),
+                len(config.services),
+                len(config.microservices),
             )
 
             # Initialize test output if not already done
@@ -136,39 +144,74 @@ class PythonPlatform(Platform):
                 self.output_manager.save_config(config)
 
             logger.debug("Building runtime objects")
-            microservices, _services, containers = self._build_runtime(config)
+            microservices, services, containers = self._build_runtime(config)
             logger.debug(
-                f"Runtime built: microservices={len(microservices)}, containers={len(containers)}"
+                "Runtime built: microservices=%d, containers=%d",
+                len(microservices),
+                len(containers),
             )
+
+            containers_config = dict(config.containers)
+            root_service_name = self._resolve_root_service_name(config)
+            root_service_names = [root_service_name]
+            service_owners = self._build_service_owners(config)
+            root_container_names = [
+                container_name
+                for container_name, container_config in containers_config.items()
+                if any(
+                    service_name in root_service_names for service_name in container_config.services
+                )
+            ]
 
             # Generate per-service scripts for each container
             logger.debug("Generating per-service scripts")
             self._generate_service_scripts(config, containers)
 
             run_started_at = time.perf_counter()
-            logger.info(f"Executing {len(containers)} containers with {workers} worker(s)")
+            logger.info(
+                "Executing %d root container(s) with %d worker(s)",
+                len(root_container_names),
+                workers,
+            )
+
+            root_containers = {
+                name: containers[name] for name in root_container_names if name in containers
+            }
 
             if workers <= 1:
                 logger.debug("Running containers sequentially")
                 container_results = [
-                    self._run_single_container(container, microservices, request_count)
-                    for container in containers.values()
+                    self._run_single_container(
+                        container,
+                        microservices,
+                        services,
+                        service_owners,
+                        request_count,
+                        root_service_name,
+                    )
+                    for container in root_containers.values()
                 ]
             else:
-                logger.debug(f"Running containers in parallel with {workers} workers")
+                logger.debug("Running containers in parallel with %d workers", workers)
                 container_results = []
                 with ThreadPoolExecutor(max_workers=workers) as executor:
                     futures = [
                         executor.submit(
-                            self._run_single_container, container, microservices, request_count
+                            self._run_single_container,
+                            container,
+                            microservices,
+                            services,
+                            service_owners,
+                            request_count,
+                            root_service_name,
                         )
-                        for container in containers.values()
+                        for container in root_containers.values()
                     ]
                     for future in as_completed(futures):
                         container_results.append(future.result())
 
             total_elapsed_ms = (time.perf_counter() - run_started_at) * 1000
-            logger.info(f"Simulation execution completed in {total_elapsed_ms:.2f}ms")
+            logger.info("Simulation execution completed in %.2fms", total_elapsed_ms)
 
             results = {
                 "platform": self.get_platform_name(),
@@ -183,28 +226,25 @@ class PythonPlatform(Platform):
             logger.debug("Saving execution results")
             if self.output_manager is not None:
                 results_path = self.output_manager.save_results(results)
-                logger.info(f"Results saved to: {results_path}")
-                print(f"Results saved to: {results_path}")
+                logger.info("Results saved to: %s", results_path)
             elif output_file:
                 output_path = Path(output_file)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 output_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
-                logger.info(f"Results saved to: {output_path}")
-                print(f"Results saved to: {output_path}")
+                logger.info("Results saved to: %s", output_path)
             else:
                 # Default to .output folder if no output file specified
                 output_path_dir = Path(output_dir)
                 output_path_dir.mkdir(parents=True, exist_ok=True)
                 default_output = output_path_dir / "python_simulation_results.json"
                 default_output.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
-                logger.info(f"Results saved to: {default_output}")
-                print(f"Results saved to: {default_output}")
+                logger.info("Results saved to: %s", default_output)
 
             self.complete_timing()
             return results
 
         except Exception as e:
-            logger.error(f"Simulation execution failed: {e}", exc_info=True)
+            logger.error("Simulation execution failed: %s", e, exc_info=True)
             self.complete_timing()
             raise RuntimeError(f"Simulation execution failed: {e}") from e
 
@@ -235,8 +275,30 @@ class PythonPlatform(Platform):
 
         return microservices, services, containers
 
+    @staticmethod
+    def _build_service_owners(config: SimulationConfig) -> dict[str, str]:
+        return {
+            microservice_name: service_name
+            for service_name, service_config in config.services.items()
+            for microservice_name in service_config.microservices.keys()
+        }
+
+    @staticmethod
+    def _resolve_root_service_name(config: SimulationConfig) -> str:
+        if config.entrypoint and config.entrypoint in config.services:
+            return config.entrypoint
+
+        for service_name, service_config in config.services.items():
+            if service_config.entrypoint == "A":
+                return service_name
+
+        if "ServiceA" in config.services:
+            return "ServiceA"
+
+        return next(iter(config.services))
+
     def _generate_service_scripts(
-        self, config: SimulationConfig, containers: dict[str, Container]
+        self, config: SimulationConfig, _containers: dict[str, Container]
     ) -> None:
         """Generate execution scripts for each service in each container.
 
@@ -290,23 +352,21 @@ class PythonPlatform(Platform):
 
         # Build microservice definitions
         microservice_defs = {}
+
+        def to_dict(obj: Any):
+            if hasattr(obj, "model_dump"):
+                return obj.model_dump()
+            if isinstance(obj, dict):
+                return {k: to_dict(v) for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [to_dict(v) for v in obj]
+            return obj
+
         for ms_name in microservices_list:
             if ms_name in microservices_config:
                 ms_cfg = microservices_config[ms_name]
                 # Convert dependencies to dict if they are Pydantic models
                 deps = getattr(ms_cfg, "dependencies", {})
-
-                # Recursively convert Pydantic models to dicts
-                def to_dict(obj):
-                    if hasattr(obj, "model_dump"):
-                        return obj.model_dump()
-                    elif isinstance(obj, dict):
-                        return {k: to_dict(v) for k, v in obj.items()}
-                    elif isinstance(obj, (list, tuple)):
-                        return [to_dict(v) for v in obj]
-                    else:
-                        return obj
-
                 deps = to_dict(deps)
 
                 microservice_defs[ms_name] = {
@@ -316,7 +376,7 @@ class PythonPlatform(Platform):
                     "dependencies": deps,
                 }
 
-        dependencies = getattr(service_config, "dependencies", [])
+        dependencies = to_dict(getattr(service_config, "dependencies", []))
 
         # Pre-compute JSON strings to avoid formatting issues in f-string
         deps_json = json.dumps(dependencies)
@@ -331,10 +391,13 @@ Auto-generated service that:
 """
 
 import json
+import logging
 import random
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceConfig:
@@ -487,15 +550,18 @@ def main():
         ServiceRequestHandler
     )
     
-    print(f"Service {{ServiceConfig.SERVICE_NAME}} starting on port {{ServiceConfig.PORT}}...")
-    print(f"Microservices: {{list(ServiceConfig.MICROSERVICES.keys())}}")
-    print(f"Dependencies: {{ServiceConfig.DEPENDENCIES}}")
-    print()
+    logger.info(
+        "Service %s starting on port %s...",
+        ServiceConfig.SERVICE_NAME,
+        ServiceConfig.PORT,
+    )
+    logger.info("Microservices: %s", list(ServiceConfig.MICROSERVICES.keys()))
+    logger.info("Dependencies: %s", ServiceConfig.DEPENDENCIES)
     
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print(f"\nService {{ServiceConfig.SERVICE_NAME}} shutting down...")
+        logger.info("Service %s shutting down...", ServiceConfig.SERVICE_NAME)
         server.shutdown()
 
 
@@ -506,7 +572,12 @@ if __name__ == "__main__":
 
     @staticmethod
     def _run_single_container(
-        container: Container, microservices: dict[str, Microservice], request_count: int
+        container: Container,
+        microservices: dict[str, Microservice],
+        services: dict[str, Service],
+        service_owners: dict[str, str],
+        request_count: int,
+        root_service_name: str,
     ) -> dict[str, Any]:
         """Execute a single container and collect metrics.
 
@@ -518,23 +589,33 @@ if __name__ == "__main__":
         Returns:
             Container execution results.
         """
-        context = ExecutionContext(microservices=microservices)
+        context = ExecutionContext(
+            microservices=microservices,
+            services=services,
+            service_owners=service_owners,
+        )
         started_at = time.perf_counter()
-        result = container.execute(context=context, request_count=request_count)
+        if root_service_name not in container.services:
+            raise RuntimeError(
+                f"Root service '{root_service_name}' not found in container '{container.name}'"
+            )
+        result = container.services[root_service_name].execute(
+            context=context,
+            request_count=request_count,
+        )
         elapsed_ms = (time.perf_counter() - started_at) * 1000
 
         return {
-            "container": result.container_name,
+            "container": container.name,
             "elapsedMs": round(elapsed_ms, 3),
             "services": [
                 {
-                    "name": service_result.service_name,
-                    "calls": service_result.calls,
-                    "success": service_result.success,
-                    "failures": service_result.failures,
-                    "successRate": round(service_result.success_rate, 4),
+                    "name": result.service_name,
+                    "calls": result.calls,
+                    "success": result.success,
+                    "failures": result.failures,
+                    "successRate": round(result.success_rate, 4),
                 }
-                for service_result in result.service_results
             ],
             "microservices": {
                 name: {

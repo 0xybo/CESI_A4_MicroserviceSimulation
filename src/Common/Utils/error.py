@@ -1,17 +1,14 @@
 """Error handling utilities."""
 
-import sys
 from src.Common.Utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def print_error(message: str) -> None:
-    """Print an error message and exit.
+def log_error(message: str) -> None:
+    """Log an error message using the application logger.
 
     Args:
         message: The error message to display.
     """
-    logger.error(f"Application error: {message}")
-    print(f"Error: {message}")
-    sys.exit(1)
+    logger.error("Application error: %s", message)

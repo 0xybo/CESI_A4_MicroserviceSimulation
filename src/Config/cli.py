@@ -3,9 +3,10 @@
 import json
 from argparse import ArgumentParser, Namespace
 
+from src.Common.Utils.logger import get_logger
+from . import load_simulation_config
 from .simulation_config import SimulationConfig
 from .build import build
-from src.Common.Utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -36,23 +37,23 @@ def main(args: Namespace):
         args: Parsed command-line arguments.
     """
     logger.debug(
-        f"Configuration command received with args: input={getattr(args, 'input', None)}, output={getattr(args, 'output', None)}"
+        "Configuration command received with args: input=%s, output=%s",
+        getattr(args, "input", None),
+        getattr(args, "output", None),
     )
     try:
         if args.input:
-            logger.info(f"Loading configuration from file: {args.input}")
-            with open(
-                args.input, "r", encoding="utf-8"
-            ) as f:  # pylint: disable=consider-using-with
-                config_data = json.load(f)
-            logger.debug(f"Configuration file parsed successfully")
-            config = SimulationConfig(**config_data)
+            logger.info("Loading configuration from file: %s", args.input)
+            config = load_simulation_config(args.input)
             logger.info(
-                f"Configuration validated: containers={len(config.containers)}, services={len(config.services)}, microservices={len(config.microservices)}"
+                "Configuration validated: containers=%d, services=%d, microservices=%d",
+                len(config.containers),
+                len(config.services),
+                len(config.microservices),
             )
-            print(config.model_dump_json(indent=4))
+            logger.info("Configuration JSON:\n%s", config.model_dump_json(indent=4, by_alias=True))
         elif args.output:
-            logger.info(f"Generating schema to output directory: {args.output}")
+            logger.info("Generating schema to output directory: %s", args.output)
             build(args.output)
         else:
             # If only --output not specified, default to .output folder
@@ -63,5 +64,5 @@ def main(args: Namespace):
         FileNotFoundError,
         ValueError,
     ) as e:  # pylint: disable=broad-except
-        logger.error(f"Error in configuration processing: {e}", exc_info=True)
-        print(f"Error generating schema: {e}")
+        logger.error("Error in configuration processing: %s", e, exc_info=True)
+        logger.error("Error generating schema: %s", e)

@@ -30,7 +30,10 @@ class Container:
         self.config = config
         self.services = services
         logger.debug(
-            f"Container '{name}' initialized with {len(services)} services: {list(services.keys())}"
+            "Container '%s' initialized with %d services: %s",
+            name,
+            len(services),
+            list(services.keys()),
         )
 
     def execute(self, context: ExecutionContext, request_count: int) -> ContainerRunResult:
@@ -44,20 +47,28 @@ class Container:
             A ContainerRunResult with aggregated service results.
         """
         logger.info(
-            f"Container '{self.name}' starting execution with {len(self.config.services)} services"
+            "Container '%s' starting execution with %d services",
+            self.name,
+            len(self.config.services),
         )
         service_results: list[ServiceRunResult] = []
 
         for service_name in self.config.services:
-            logger.debug(f"Container '{self.name}' executing service '{service_name}'")
+            logger.debug("Container '%s' executing service '%s'", self.name, service_name)
             result = self.services[service_name].execute(context, request_count)
             service_results.append(result)
             logger.debug(
-                f"Container '{self.name}' service '{service_name}' completed: success={result.success}, failures={result.failures}"
+                "Container '%s' service '%s' completed: success=%d, failures=%d",
+                self.name,
+                service_name,
+                result.success,
+                result.failures,
             )
 
         logger.info(
-            f"Container '{self.name}' execution completed with {len(service_results)} service results"
+            "Container '%s' execution completed with %d service results",
+            self.name,
+            len(service_results),
         )
         return ContainerRunResult(
             container_name=self.name,

@@ -34,3 +34,32 @@ def dataclass(cls: type) -> type:
 
     setattr(cls, "__init__", new__init__)
     return cls
+
+
+def parse_requests_arg(value: str | None) -> int | list[int] | None:
+    """Parse a requests argument which may be a single integer or a
+    semicolon-separated list of integers (e.g. "1;5;10").
+
+    Returns an int for a single value, a list[int] for multiple values,
+    or None if the input is None or empty.
+    """
+    if value is None:
+        return None
+
+    s = str(value).strip()
+    if not s:
+        return None
+
+    if ";" in s:
+        parts = [p.strip() for p in s.split(";") if p.strip()]
+        if not parts:
+            return None
+        try:
+            return [int(p) for p in parts]
+        except ValueError as exc:
+            raise ValueError(f"Invalid requests list: {value}") from exc
+
+    try:
+        return int(s)
+    except ValueError as exc:
+        raise ValueError(f"Invalid requests value: {value}") from exc

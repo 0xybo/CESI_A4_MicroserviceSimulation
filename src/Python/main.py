@@ -79,26 +79,37 @@ def main() -> int:
     """
     logger.info("Starting Python simulation executor")
     args = parse_args()
-    logger.info(f"Arguments parsed: config={args.config}, requests={args.requests}, workers={args.workers}, output={args.output}")
-    
+    logger.info(
+        "Arguments parsed: config=%s, requests=%s, workers=%s, output=%s",
+        args.config,
+        args.requests,
+        args.workers,
+        args.output,
+    )
+
     if args.requests <= 0:
-        logger.error(f"Invalid requests value: {args.requests}. Must be > 0")
+        logger.error("Invalid requests value: %s. Must be > 0", args.requests)
         raise ValueError("--requests must be > 0")
     if args.workers <= 0:
-        logger.error(f"Invalid workers value: {args.workers}. Must be > 0")
+        logger.error("Invalid workers value: %s. Must be > 0", args.workers)
         raise ValueError("--workers must be > 0")
 
-    logger.debug(f"Running simulation with config={args.config}, requests={args.requests}, workers={args.workers}")
+    logger.debug(
+        "Running simulation with config=%s, requests=%s, workers=%s",
+        args.config,
+        args.requests,
+        args.workers,
+    )
     result = run_simulation(args.config, args.requests, args.workers)
     json_output = json.dumps(result, indent=2)
 
     if args.output is not None:
-        logger.info(f"Writing results to file: {args.output}")
+        logger.info("Writing results to file: %s", args.output)
         args.output.write_text(json_output + "\n", encoding="utf-8")
-        logger.info(f"Results written successfully to {args.output}")
+        logger.info("Results written successfully to %s", args.output)
     else:
         logger.debug("Writing results to stdout")
-        print(json_output)
+        logger.info("Simulation result:\n%s", json_output)
 
     logger.info("Python simulation executor completed successfully")
     return 0

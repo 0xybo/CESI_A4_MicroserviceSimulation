@@ -26,13 +26,24 @@ class Service:
         """
         self.name = name
         self.config = config
-        logger.debug(f"Service '{name}' initialized with {len(config.microservices)} microservices")
+        logger.debug(
+            "Service '%s' initialized with %d microservices and %d dependencies",
+            name,
+            len(config.microservices),
+            len(config.dependencies),
+        )
 
-    def execute(self, context: ExecutionContext, request_count: int) -> ServiceRunResult:
+    def execute(
+        self,
+        context: ExecutionContext,
+        request_count: int,
+        microservice_name: str | None = None,
+    ) -> ServiceRunResult:
         """Execute the service with multiple requests.
 
-        Processes the specified number of requests, executing microservices
-        in order and aggregating success/failure metrics.
+        For each request, calls the configured entrypoint microservice by default,
+        or a specific microservice when `microservice_name` is provided. That
+        microservice can recursively call its dependencies.
 
         Args:
             context: The execution context with available microservices.
@@ -41,25 +52,38 @@ class Service:
         Returns:
             A ServiceRunResult with aggregated metrics.
         """
-        logger.info(f"Service '{self.name}' starting execution with {request_count} requests")
+        logger.info("Service '%s' starting execution with %d requests", self.name, request_count)
         success = 0
         failures = 0
 
-        ordered_microservices = list(self.config.microservices.keys())
-        logger.debug(f"Service '{self.name}' microservices order: {ordered_microservices}")
+        entrypoint_name = microservice_name or self.config.entrypoint
+        if entrypoint_name is not None and entrypoint_name not in self.config.microservices:
+            raise RuntimeError(
+                f"Service '{self.name}' microservice '{entrypoint_name}'" " not found in context"
+            )
+
+        if entrypoint_name is not None:
+            logger.debug("Service '%s' entrypoint: %s", self.name, entrypoint_name)
 
         for request_idx in range(request_count):
-            request_ok = True
             logger.debug(
-                f"Service '{self.name}' processing request #{request_idx + 1}/{request_count}"
+                "Service '%s' processing request #%d/%d",
+                self.name,
+                request_idx + 1,
+                request_count,
             )
-            for microservice_name in ordered_microservices:
-                if not context.microservices[microservice_name].execute(context):
-                    logger.debug(
-                        f"Service '{self.name}' request #{request_idx + 1} failed at microservice '{microservice_name}'"
-                    )
+            request_ok = True
+
+            if entrypoint_name is not None:
+                # Call the target microservice, which recursively calls its dependencies.
+                if not context.microservices[entrypoint_name].execute(context):
                     request_ok = False
-                    break
+                    logger.warning(
+                        "Service '%s' request #%d failed at microservice '%s'",
+                        self.name,
+                        request_idx + 1,
+                        entrypoint_name,
+                    )
 
             if request_ok:
                 success += 1
@@ -67,7 +91,12 @@ class Service:
                 failures += 1
 
         logger.info(
-            f"Service '{self.name}' execution completed: {success} successes, {failures} failures (rate: {success}/{request_count})"
+            "Service '%s' execution completed: %d successes, %d failures (rate: %d/%d)",
+            self.name,
+            success,
+            failures,
+            success,
+            request_count,
         )
         return ServiceRunResult(
             service_name=self.name,

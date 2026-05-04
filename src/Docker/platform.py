@@ -1,117 +1,295 @@
-"""Docker-based platform implementation.
-
-Provides a Platform implementation that executes simulations using Docker containers
-via docker-compose, enabling containerized execution of microservice architectures.
-"""
+"""Docker-based platform implementation."""
 
 from __future__ import annotations
 
 import json
 import subprocess
 import time
+from concurrent.futures import as_completed
+from concurrent.futures.thread import ThreadPoolExecutor
 from pathlib import Path
+from threading import Event
 from typing import Any
 
+from src.Common.Monitor.default_monitor import DefaultMonitor
 from src.Common.Platform import Platform
 from src.Common.Utils.logger import get_logger
 from src.Config import SimulationConfig, load_simulation_config
+from src.Docker.platform_docker import (
+    ensure_docker_daemon,
+    get_compose_command,
+    post_json,
+    collect_container_resource_usage,
+)
+from src.Docker.platform_runtime import (
+    resolve_compose_path,
+    build_service_runtime_config,
+    write_runtime_tree,
+    load_runtime_service_endpoints,
+    resolve_root_service_name,
+    wait_for_service_health,
+)
 
 logger = get_logger(__name__)
 
 
 class DockerPlatform(Platform):
-    """Platform implementation for Docker container-based execution.
-
-    Executes microservice simulations using Docker Compose, with each container
-    running a subset of services. Results are collected from mounted volumes.
-    """
+    """Build and run the generated Docker architecture."""
 
     def __init__(self) -> None:
-        """Initialize Docker platform."""
         super().__init__()
         self.docker_compose_path: Path | None = None
         self.results_dir: Path | None = None
+        self.runtime_root: Path | None = None
 
     def get_platform_name(self) -> str:
-        """Get the platform name.
-
-        Returns:
-            "docker"
-        """
         return "docker"
 
     def build(self, config_path: str | Path, output_dir: str | Path | None = None) -> None:
-        """Build Docker execution environment.
+        output_root = Path(output_dir or ".output")
+        output_root.mkdir(parents=True, exist_ok=True)
 
-        Validates Docker/docker-compose availability, generates docker-compose.yml,
-        and creates timestamped test directory.
-
-        Args:
-            config_path: Path to simulation configuration.
-            output_dir: Base directory for output (default: .output).
-
-        Raises:
-            RuntimeError: If environment validation or build fails.
-        """
-        if output_dir is None:
-            output_dir = ".output"
-        output_dir = Path(output_dir)
         config_path = Path(config_path)
-
-        # Check config file exists
         if not config_path.exists():
             raise RuntimeError(f"Configuration file not found: {config_path}")
 
-        # Check Docker availability
+        config = load_simulation_config(config_path)
+        logger.info("Configuration loaded from %s", config_path)
+        logger.info("Containers: %d", len(config.containers))
+        logger.info("Services: %d", len(config.services))
+        logger.info("Microservices: %d", len(config.microservices))
+
+        runtime_root = output_root.resolve()
+        runtime_root.mkdir(parents=True, exist_ok=True)
+        self.runtime_root = runtime_root
+
+        write_runtime_tree(runtime_root, config)
+        self.docker_compose_path = runtime_root / "docker-compose.yml"
+        logger.info("Docker runtime generated in %s", runtime_root.relative_to(Path.cwd()))
+
+    def run(
+        self,
+        compose_path: str | Path | None = None,
+        output_dir: str | Path | None = None,
+        detach: bool = True,
+    ) -> None:
+        """Run the most recent or explicitly provided Docker Compose file."""
+        resolved_compose = resolve_compose_path(compose_path, output_dir).resolve()
+        ensure_docker_daemon()
+
+        command = get_compose_command()
+        args = command + ["-f", str(resolved_compose), "up", "--build"]
+        if detach:
+            args.append("-d")
+
+        # Log the command and working directory (relative) for debugging
+        logger.info("Running compose file: %s", resolved_compose.relative_to(Path.cwd()))
+        logger.info("Working directory: %s", resolved_compose.relative_to(Path.cwd()))
         try:
-            subprocess.run(
-                ["docker", "--version"],
+            completed = subprocess.run(
+                args,
                 check=True,
+                cwd=str(resolved_compose.parent),
                 capture_output=True,
                 text=True,
-                timeout=5,
             )
-            logger.info("✓ Docker is available")
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
-            raise RuntimeError(f"Docker is not available or not installed: {e}") from e
+            logger.debug("Docker compose stdout: %s", completed.stdout)
+            logger.debug("Docker compose stderr: %s", completed.stderr)
+        except subprocess.CalledProcessError as exc:
+            logger.debug("Docker compose stdout: %s", exc.stdout)
+            logger.debug("Docker compose stderr: %s", exc.stderr)
+            raise RuntimeError(
+                f"Docker Compose failed to start the stack from {resolved_compose}:"
+                f" {exc.stderr or exc}"
+            ) from exc
 
-        # Check docker-compose availability
+    def test(
+        self,
+        compose_path: str | Path | None = None,
+        output_dir: str | Path | None = None,
+        request_count: int | None = None,
+    ) -> dict[str, Any]:
+        """Run the generated architecture and collect request/resource metrics."""
+        resolved_compose = resolve_compose_path(compose_path, output_dir).resolve()
+        ensure_docker_daemon()
+
+        runtime_root = resolved_compose.parent
+        config = load_simulation_config(runtime_root / "config.json")
+        effective_request_count = (
+            request_count if request_count is not None else config.request_count
+        )
+        service_endpoints = load_runtime_service_endpoints(runtime_root)
+        root_service_name = resolve_root_service_name(config)
+        root_service_names = [root_service_name]
+        if not root_service_names:
+            raise RuntimeError("No root service found in configuration")
+        root_service_endpoints = {
+            service_name: service_endpoints[service_name]
+            for service_name in root_service_names
+            if service_name in service_endpoints
+        }
+
+        self.run(compose_path=resolved_compose, output_dir=output_dir, detach=True)
+        wait_for_service_health(service_endpoints)
+
+        monitor = DefaultMonitor(runtime_root / "result.csv")
+        monitor.start_resource_monitor(
+            lambda: collect_container_resource_usage(resolved_compose),
+            interval_seconds=1.0,
+        )
+
         try:
-            subprocess.run(
-                ["docker-compose", "--version"],
+            # Submit all requests for all root services concurrently so they
+            # are launched "at the same time". We create one task per
+            # (service, request_index) pair and record durations as they
+            # complete. The monitor is thread-safe.
+            tasks: list[tuple[str, int]] = []
+            for service_name in root_service_endpoints.keys():
+                for request_index in range(1, effective_request_count + 1):
+                    tasks.append((service_name, request_index))
+
+            # max_workers = min(1000, len(tasks) or 1)
+            max_workers = len(tasks) or 1
+
+            # Create a synchronization event: all threads wait on this before sending
+            start_event = Event()
+            futures = {}
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all tasks first (they will wait on start_event before sending)
+                for service_name, request_index in tasks:
+                    service_url = root_service_endpoints[service_name]["url"]
+                    logger.debug(
+                        "Scheduling request %s for service %s",
+                        request_index,
+                        service_name,
+                    )
+
+                    def _send(service=service_name, idx=request_index, url=service_url):
+                        # Wait for the signal to start sending all requests simultaneously
+                        start_event.wait()
+
+                        started = time.perf_counter()
+                        try:
+                            resp = post_json(
+                                f"{url}/execute",
+                                {
+                                    "serviceName": service,
+                                    "requestIndex": idx,
+                                    "requestCount": effective_request_count,
+                                },
+                            )
+                            duration_ms = (time.perf_counter() - started) * 1000
+                            success = isinstance(resp, dict) and resp.get("status") == "ok"
+                            monitor.record_request(
+                                service_name=service,
+                                request_index=idx,
+                                request_duration_ms=duration_ms,
+                                success=success,
+                            )
+                            logger.info(
+                                "Completed %s request %s/%s in %.3f ms (mean duration %.3f ms, "
+                                "mean resources %.3f%%)",
+                                service,
+                                idx,
+                                effective_request_count,
+                                duration_ms,
+                                monitor.mean_request_duration_ms(),
+                                monitor.mean_resource_usage_percent(),
+                            )
+                            return service, idx, resp
+                        except Exception:  # pylint: disable=broad-exception-caught
+                            duration_ms = (time.perf_counter() - started) * 1000
+                            try:
+                                monitor.record_request(
+                                    service_name=service,
+                                    request_index=idx,
+                                    request_duration_ms=duration_ms,
+                                    success=False,
+                                )
+                            except Exception:  # pylint: disable=broad-exception-caught
+                                pass
+                            raise
+
+                    futures[executor.submit(_send)] = (service_name, request_index)
+
+                # All tasks are now submitted and waiting. Signal them to start simultaneously.
+                logger.info(
+                    "All %d requests scheduled. Releasing threads to start sending...", len(tasks)
+                )
+                start_event.set()
+
+                # Wait for futures and fail-fast on the first exception
+                for future in as_completed(futures.keys()):
+                    idx = futures[future][1]
+                    try:
+                        service, idx, response = future.result()
+                        if isinstance(response, dict) and response.get("status") == "error":
+                            raise RuntimeError(
+                                f"Service {service} reported an error: "
+                                f"{response.get('message', 'unknown error')}"
+                            )
+                    except Exception as exc:  # pylint: disable=broad-exception-caught
+                        # Show error without traceback and print traceback at debug level
+                        logger.error(
+                            "Error during request %s for service %s: %s",
+                            idx,
+                            futures[future][0],
+                            exc,
+                        )
+                        logger.debug("Exception details for request %s: ", idx, exc_info=True)
+
+        finally:
+            monitor.stop_resource_monitor()
+
+        result_csv = monitor.export_to_csv(runtime_root / f"result_{effective_request_count}.csv")
+        summary = monitor.summary()
+
+        logger.info(
+            "Test completed: mean request duration %.3f ms, mean resources %.3f%%, success: %.2f%%",
+            summary["meanRequestDurationMs"],
+            summary["meanResourceUsagePercent"],
+            summary["successRate"] * 100,
+        )
+
+        return {
+            "platform": self.get_platform_name(),
+            "composePath": str(resolved_compose),
+            "resultCsv": str(result_csv),
+            "requestCount": effective_request_count,
+            "services": root_service_names,
+            "summary": summary,
+        }
+
+    def stop(
+        self,
+        compose_path: str | Path | None = None,
+        output_dir: str | Path | None = None,
+    ) -> None:
+        """Stop and remove the generated Docker Compose stack."""
+        resolved_compose = resolve_compose_path(compose_path, output_dir).resolve()
+        ensure_docker_daemon()
+
+        command = get_compose_command()
+        args = command + ["-f", str(resolved_compose), "down", "--remove-orphans"]
+
+        logger.info("Stopping compose stack: %s", resolved_compose.relative_to(Path.cwd()))
+        try:
+            completed = subprocess.run(
+                args,
                 check=True,
+                cwd=str(resolved_compose.parent),
                 capture_output=True,
                 text=True,
-                timeout=5,
             )
-            logger.info("✓ docker-compose is available")
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
-            raise RuntimeError(f"docker-compose is not available or not installed: {e}") from e
-
-        # Load and validate config
-        try:
-            config = load_simulation_config(config_path)
-            logger.info("✓ Configuration valid: %s", config_path)
-            logger.info("✓ Containers: %d", len(config.containers))
-            logger.info("✓ Services: %d", len(config.services))
-            logger.info("✓ Microservices: %d", len(config.microservices))
-        except Exception as e:
-            raise RuntimeError(f"Failed to validate configuration: {e}") from e
-
-        # Initialize test output manager and create timestamped directory
-        test_dir = self.initialize_output_manager(output_dir)
-
-        # Save config to test directory
-        self.output_manager.save_config(config)
-        logger.info("✓ Test directory created: %s", test_dir)
-
-        # Generate docker-compose.yml in test directory
-        try:
-            docker_compose_path = self._generate_docker_compose(config, test_dir)
-            logger.info("✓ docker-compose.yml generated: %s", docker_compose_path)
-            self.docker_compose_path = docker_compose_path
-        except Exception as e:
-            raise RuntimeError(f"Failed to generate docker-compose.yml: {e}") from e
+            logger.debug("Docker compose stop stdout: %s", completed.stdout)
+            logger.debug("Docker compose stop stderr: %s", completed.stderr)
+        except subprocess.CalledProcessError as exc:
+            logger.debug("Docker compose stop stdout: %s", exc.stdout)
+            logger.debug("Docker compose stop stderr: %s", exc.stderr)
+            raise RuntimeError(
+                f"Docker Compose failed to stop the stack from {resolved_compose}:"
+                f" {exc.stderr or exc}"
+            ) from exc
 
     def execute(
         self,
@@ -122,465 +300,41 @@ class DockerPlatform(Platform):
         output_dir: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """Execute the simulation using Docker containers.
-
-        Creates per-service scripts for each container and stores them
-        in the test directory structure. Results and metrics are saved
-        to the timestamped test output directory.
-
-        Args:
-            config_path: Path to simulation configuration.
-            request_count: Number of requests per service.
-            output_file: Optional path to write results.
-            docker_compose_path: Path to docker-compose.yml to use.
-            output_dir: Base output directory (default: .output).
-            **kwargs: Additional arguments (unused).
-
-        Returns:
-            Execution results dictionary.
-
-        Raises:
-            RuntimeError: If execution fails.
-        """
-        if output_dir is None:
-            output_dir = ".output"
-
-        self.record_timing()
-
-        try:
-            config_path = Path(config_path)
-            config = load_simulation_config(config_path)
-
-            # Initialize test output if not already done
-            if self.output_manager is None:
-                self.initialize_output_manager(output_dir)
-                self.output_manager.save_config(config)
-
-            # Use provided or generate docker-compose.yml
-            if docker_compose_path:
-                compose_path = Path(docker_compose_path)
-            elif self.docker_compose_path:
-                compose_path = self.docker_compose_path
-            else:
-                raise RuntimeError("docker-compose.yml path not set; call build() first")
-
-            if not compose_path.exists():
-                raise RuntimeError(f"docker-compose.yml not found: {compose_path}")
-
-            # Generate per-service scripts for each container
-            self._generate_service_scripts(config, compose_path.parent)
-
-            # Set up results directory in test directory
-            test_dir = self.get_test_output_directory()
-            results_dir = test_dir / "docker_results"
-            results_dir.mkdir(parents=True, exist_ok=True)
-            self.results_dir = results_dir
-
-            # Run docker-compose up
-            logger.info("Starting docker-compose from: %s", compose_path)
-            run_started_at = time.perf_counter()
-
-            subprocess.run(
-                ["docker-compose", "-f", str(compose_path), "up", "--build"],
-                check=True,
-                cwd=str(compose_path.parent),
-                timeout=300,  # 5 minute timeout
+        _ = kwargs
+        if docker_compose_path is None:
+            self.build(config_path, output_dir)
+            docker_compose_path = (
+                str(self.docker_compose_path) if self.docker_compose_path else None
             )
 
-            total_elapsed_ms = (time.perf_counter() - run_started_at) * 1000
+        result = self.test(
+            compose_path=docker_compose_path,
+            output_dir=output_dir,
+            request_count=request_count,
+        )
 
-            # Collect results from containers
-            container_results = self._collect_results(results_dir, config)
+        if output_file is not None:
+            output_path = Path(output_file)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
 
-            results = {
-                "platform": self.get_platform_name(),
-                "config": str(config_path),
-                "requestCount": request_count,
-                "totalElapsedMs": round(total_elapsed_ms, 3),
-                "containers": container_results,
-            }
+        return result
 
-            # Save results to test directory
-            if self.output_manager is not None:
-                results_path = self.output_manager.save_results(results)
-                logger.info("Results saved to: %s", results_path)
-            elif output_file:
-                output_path = Path(output_file)
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-                output_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
-                logger.info("Results saved to: %s", output_path)
-            else:
-                # Default to .output folder if no output file specified
-                output_path_dir = Path(output_dir)
-                output_path_dir.mkdir(parents=True, exist_ok=True)
-                default_output = output_path_dir / "docker_simulation_results.json"
-                default_output.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
-                logger.info("Results saved to: %s", default_output)
-
-            self.complete_timing()
-            return results
-
-        except Exception as e:
-            self.complete_timing()
-            raise RuntimeError(f"Docker execution failed: {e}") from e
-
-    def cleanup(self) -> None:
-        """Clean up Docker resources and temporary files."""
+    def cleanup_runtime(self) -> None:
+        """Clean up any generated runtime resources."""
         if self.docker_compose_path and self.docker_compose_path.exists():
             try:
                 subprocess.run(
-                    ["docker-compose", "-f", str(self.docker_compose_path), "down"],
+                    [*get_compose_command(), "-f", str(self.docker_compose_path), "down"],
                     check=False,
                     cwd=str(self.docker_compose_path.parent),
                     timeout=30,
+                    capture_output=True,
+                    text=True,
                 )
             except Exception:  # pylint: disable=broad-exception-caught
-                pass  # Ignore cleanup errors
+                pass
 
-    def _generate_service_scripts(self, config: SimulationConfig, test_dir: Path) -> None:
-        """Generate execution scripts for each service in each container.
-
-        Creates shell scripts in per-container directories within the test directory
-        for each service with all necessary information to run that service and its microservices.
-
-        Args:
-            config: Simulation configuration.
-            test_dir: Test output directory where container folders are created.
-        """
-        if self.output_manager is None:
-            return
-
-        for container_name, container_config in config.containers.items():
-            for service_name in container_config.services:
-                if service_name not in config.services:
-                    continue
-
-                service_config = config.services[service_name]
-                script_content = self._generate_service_script_content(
-                    service_name, service_config, config.microservices
-                )
-                self.output_manager.create_service_script(
-                    container_name, service_name, script_content
-                )
-
-    @staticmethod
-    def _generate_service_script_content(
-        service_name: str, service_config: Any, microservices_config: dict[str, Any]
-    ) -> str:
-        """Generate Python web server script for a Docker service.
-
-        Creates a Flask/HTTP-based web server that:
-        - Runs the service as a web server for inter-service communication
-        - Executes microservices as tasks within the service
-        - Handles dependencies and latency
-        - Simulates errors based on configuration
-
-        Args:
-            service_name: Name of the service.
-            service_config: Service configuration object.
-            microservices_config: All microservices configurations.
-
-        Returns:
-            Python script content.
-        """
-        # Get microservices for this service
-        microservices_list = []
-        if hasattr(service_config, "microservices"):
-            microservices_list = service_config.microservices
-
-        # Recursively convert Pydantic models to dicts
-        def to_dict(obj):
-            if hasattr(obj, "model_dump"):
-                return obj.model_dump()
-            elif isinstance(obj, dict):
-                return {k: to_dict(v) for k, v in obj.items()}
-            elif isinstance(obj, (list, tuple)):
-                return [to_dict(v) for v in obj]
-            else:
-                return obj
-
-        # Build microservice definitions
-        microservice_defs = {}
-        for ms_name in microservices_list:
-            if ms_name in microservices_config:
-                ms_cfg = microservices_config[ms_name]
-                # Convert dependencies to dict if they are Pydantic models
-                deps = getattr(ms_cfg, "dependencies", {})
-                deps = to_dict(deps)
-
-                microservice_defs[ms_name] = {
-                    "error_rate": float(getattr(ms_cfg, "error_rate", 0.0)),
-                    "latency": int(getattr(ms_cfg, "latency", 0)),
-                    "work_difficulty": float(getattr(ms_cfg, "work_difficulty", 0.1)),
-                    "dependencies": deps,
-                }
-
-        dependencies = getattr(service_config, "dependencies", [])
-
-        # Pre-compute JSON strings to avoid formatting issues in f-string
-        deps_json = json.dumps(dependencies)
-        microservices_json = json.dumps(microservice_defs, indent=6)
-
-        script = f'''"""Web service runner for {service_name} (Docker).
-
-Auto-generated service that:
-- Runs as a web server for inter-service communication
-- Executes microservices as tasks
-- Handles dependencies and failures
-- Designed for Docker containerized deployment
-"""
-
-import json
-import random
-import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
-
-
-class ServiceConfig:
-    """Configuration for {service_name} service."""
-    
-    SERVICE_NAME = "{service_name}"
-    PORT = 8000
-    HOST = "0.0.0.0"
-    
-    DEPENDENCIES = {deps_json}
-    
-    MICROSERVICES = {microservices_json}
-
-
-class MicroserviceExecutor:
-    """Executes microservices with simulated latency and errors."""
-    
-    def __init__(self):
-        self.call_count = {{}}
-        self.error_count = {{}}
-    
-    def execute_microservice(self, microservice_name: str) -> dict:
-        """Execute a microservice task.
-        
-        Args:
-            microservice_name: Name of the microservice to execute.
-        
-        Returns:
-            Result dictionary with execution details.
-        """
-        if microservice_name not in ServiceConfig.MICROSERVICES:
-            return {{
-                "status": "error",
-                "message": f"Microservice {{microservice_name}} not found"
-            }}
-
-        ms_config = ServiceConfig.MICROSERVICES[microservice_name]
-
-        # Track calls
-        self.call_count[microservice_name] = self.call_count.get(microservice_name, 0) + 1
-
-        # Simulate latency
-        latency_ms = ms_config.get("latency", 0)
-        if latency_ms > 0:
-            time.sleep(latency_ms / 1000.0)
-
-        # Simulate errors
-        error_rate = ms_config.get("error_rate", 0.0)
-        if random.random() < error_rate:
-            self.error_count[microservice_name] = self.error_count.get(microservice_name, 0) + 1
-            return {{
-                "status": "error",
-                "microservice": microservice_name,
-                "message": "Simulated error"
-            }}
-
-        return {{
-            "status": "success",
-            "microservice": microservice_name,
-            "latency_ms": latency_ms,
-            "call_count": self.call_count[microservice_name]
-        }}
-
-    def get_stats(self) -> dict:
-        """Get execution statistics."""
-        return {{
-            "calls": self.call_count,
-            "errors": self.error_count
-        }}
-
-
-class ServiceRequestHandler(BaseHTTPRequestHandler):
-    """HTTP request handler for service API."""
-
-    microservice_executor = MicroserviceExecutor()
-
-    def do_GET(self):
-        """Handle GET requests."""
-        if self.path == "/health":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            response = {{
-                "service": ServiceConfig.SERVICE_NAME,
-                "status": "healthy"
-            }}
-            self.wfile.write(json.dumps(response).encode())
-
-        elif self.path == "/stats":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            response = {{
-                "service": ServiceConfig.SERVICE_NAME,
-                "stats": self.microservice_executor.get_stats()
-            }}
-            self.wfile.write(json.dumps(response).encode())
-
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def do_POST(self):
-        """Handle POST requests to execute microservices."""
-        try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length).decode()
-            request = json.loads(body)
-
-            microservice_name = request.get("microservice")
-
-            if not microservice_name:
-                self.send_response(400)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                response = {{
-                    "error": "Missing microservice name"
-                }}
-                self.wfile.write(json.dumps(response).encode())
-                return
-
-            # Execute the microservice
-            result = self.microservice_executor.execute_microservice(microservice_name)
-
-            # Send response
-            status_code = 200 if result.get("status") == "success" else 500
-            self.send_response(status_code)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(result).encode())
-
-        except Exception as e:
-            self.send_response(500)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            response = {{
-                "error": str(e)
-            }}
-            self.wfile.write(json.dumps(response).encode())
-
-    def log_message(self, format, *args):
-        """Suppress default HTTP logging."""
-        pass
-
-
-def main():
-    """Start the service web server."""
-    server = HTTPServer(
-        (ServiceConfig.HOST, ServiceConfig.PORT),
-        ServiceRequestHandler
-    )
-
-    print(f"Service {{ServiceConfig.SERVICE_NAME}} starting on port {{ServiceConfig.PORT}}...")
-    print(f"Microservices: {{list(ServiceConfig.MICROSERVICES.keys())}}")
-    print(f"Dependencies: {{ServiceConfig.DEPENDENCIES}}")
-    print()
-    
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print(f"\nService {{ServiceConfig.SERVICE_NAME}} shutting down...")
-        server.shutdown()
-
-
-if __name__ == "__main__":
-    main()
-'''
-        return script
-
-    @staticmethod
-    def _generate_docker_compose(config: SimulationConfig, output_dir: Path) -> Path:
-        """Generate docker-compose.yml from configuration.
-
-        Creates a docker-compose file with:
-        - One service per container
-        - Each service runs a simulation executor with its container's services
-        - Shared results volume for collecting output
-        - Network for inter-service communication
-
-        Args:
-            config: Simulation configuration.
-            output_dir: Directory to write docker-compose.yml.
-
-        Returns:
-            Path to generated docker-compose.yml.
-        """
-        docker_compose = {
-            "version": "3.9",
-            "services": {},
-            "volumes": {"results": {"driver": "local"}},
-            "networks": {"simulation": {"driver": "bridge"}},
-        }
-
-        # Create a service for each container
-        for container_name, container_config in config.containers.items():
-            service_names = list(container_config.services.keys())
-
-            # Service runs the Python simulation executor with its services
-            docker_compose["services"][container_name] = {
-                "build": {
-                    "context": ".",
-                    "dockerfile": "Dockerfile.executor",
-                },
-                "environment": {
-                    "CONTAINER_NAME": container_name,
-                    "SERVICES": ",".join(service_names),
-                    "REQUEST_COUNT": "100",
-                },
-                "volumes": [
-                    "results:/results",
-                    "./config-test.json:/config.json:ro",
-                ],
-                "networks": ["simulation"],
-                "depends_on": [],
-            }
-
-        compose_path = output_dir / "docker-compose.yml"
-        with compose_path.open("w", encoding="utf-8") as f:
-            json.dump(docker_compose, f, indent=2)
-
-        return compose_path
-
-    @staticmethod
-    def _collect_results(results_dir: Path, config: SimulationConfig) -> list[dict[str, Any]]:
-        """Collect execution results from containers.
-
-        Reads JSON result files written by each container to the shared results volume.
-
-        Args:
-            results_dir: Directory containing result files.
-            config: Configuration (for reference).
-
-        Returns:
-            List of container result dictionaries.
-        """
-        container_results = []
-
-        for container_name in config.containers.keys():
-            result_file = results_dir / f"{container_name}_result.json"
-            if result_file.exists():
-                try:
-                    with result_file.open("r", encoding="utf-8") as f:
-                        result = json.load(f)
-                    container_results.append(result)
-                except Exception:  # pylint: disable=broad-exception-caught
-                    # Skip if result file is invalid
-                    pass
-
-        return sorted(container_results, key=lambda item: item.get("container", ""))
+    # NOTE: Helper methods have been extracted to separate modules:
+    # - platform_docker.py: Docker CLI operations
+    # - platform_runtime.py: Runtime configuration and generation

@@ -10,11 +10,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from src.Common.Utils.logger import setup_logger
+
 from .simulation_config import SimulationConfig
 from .container_config import ContainerConfig
 from .service_config import ServiceConfig
 from .microservice_config import MicroserviceConfig
-from ..Common.Utils.error import print_error
 
 
 def load_simulation_config(config_path: str | Path) -> SimulationConfig:
@@ -36,20 +37,22 @@ def load_simulation_config(config_path: str | Path) -> SimulationConfig:
     config_path = Path(config_path)
 
     if not config_path.exists():
-        print_error(f"Configuration file not found: {config_path}")
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     try:
         with config_path.open("r", encoding="utf-8") as f:
             config_data = json.load(f)
-        return SimulationConfig(**config_data)
+        config = SimulationConfig(**config_data)
+        setup_logger("MicroserviceSimulation", config.log_level)
+        return config
     except json.JSONDecodeError as e:
-        print_error(f"Invalid JSON in {config_path}: {e}")
+        raise json.JSONDecodeError(e.msg, e.doc, e.pos) from e
     except (
         FileNotFoundError,
         OSError,
         ValueError,
     ) as e:  # pylint: disable=broad-except
-        print_error(f"Failed to parse configuration: {e}")
+        raise ValueError(f"Failed to parse configuration: {e}") from e
 
 
 __all__ = [

@@ -1,12 +1,62 @@
 """
 Centralized logging configuration for the Microservice Simulation framework.
-Logs are saved to .logs folder with different levels: DEBUG, INFO, WARNING, ERROR
+Logs are saved to the .logs folder with fixed simulation and error files.
 """
 
 import logging
-import logging.handlers
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+
+class _MicrosecondFormatter(logging.Formatter):
+    """Formatter that supports ``%f`` in ``datefmt``."""
+
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:
+        if datefmt is None:
+            return super().formatTime(record, datefmt)
+        return datetime.fromtimestamp(record.created).strftime(datefmt)
+
+
+class _AnsiColorFormatter(_MicrosecondFormatter):
+    """Apply ANSI colors to console log records."""
+
+    DATE_COLOR = "\033[90m"
+    COLORS = {
+        logging.DEBUG: "\033[36m",
+        logging.INFO: "\033[32m",
+        logging.WARNING: "\033[33m",
+        logging.ERROR: "\033[31m",
+        logging.CRITICAL: "\033[1;31m",
+    }
+    ORIGIN_COLOR = "\033[35m"
+    MESSAGE_COLOR = "\033[37m"
+    RESET = "\033[0m"
+
+    def format(self, record: logging.LogRecord) -> str:
+        timestamp = self.formatTime(record, self.datefmt)
+        level = record.levelname
+        origin = record.name
+        message = record.getMessage()
+
+        if record.exc_info:
+            message = f"{message}\n{self.formatException(record.exc_info)}"
+        if record.stack_info:
+            message = f"{message}\n{self.formatStack(record.stack_info)}"
+
+        level_color = self.COLORS.get(record.levelno, "")
+        timestamp_text = f"{self.DATE_COLOR}{timestamp}{self.RESET}"
+        level_text = f"{level_color}{level}{self.RESET}" if level_color else level
+        origin_text = f"{self.ORIGIN_COLOR}{origin}{self.RESET}"
+        message_text = f"{self.MESSAGE_COLOR}{message}{self.RESET}"
+
+        return f"{timestamp_text} - {level_text} - {origin_text} - {message_text}"
+
+
+def _build_file_handler(path: Path, level: int, formatter: logging.Formatter) -> logging.Handler:
+    handler = logging.FileHandler(path, mode="a", encoding="utf-8")
+    handler.setLevel(level)
+    handler.setFormatter(formatter)
+    return handler
 
 
 def setup_logger(name: str, log_level: str = "INFO") -> logging.Logger:
@@ -20,56 +70,48 @@ def setup_logger(name: str, log_level: str = "INFO") -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    logger = logging.getLogger(name)
+    logger = logging.getLogger()
+    resolved_level = getattr(logging, log_level.upper(), logging.INFO)
 
     # Prevent duplicate handlers
     if logger.handlers:
-        return logger
+        logger.setLevel(resolved_level)
+        for handler in logger.handlers:
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.FileHandler
+            ):
+                handler.setLevel(resolved_level)
+        return logging.getLogger(name)
 
-    logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+    logger.setLevel(resolved_level)
 
     # Create .logs directory if it doesn't exist
     logs_dir = Path.cwd() / ".logs"
     logs_dir.mkdir(exist_ok=True, parents=True)
 
     # Create formatters
-    detailed_formatter = logging.Formatter(
+    detailed_formatter = _MicrosecondFormatter(
         fmt=(
             "%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d]"
             " - %(funcName)s() - %(message)s"
         ),
-        datefmt="%Y-%m-%d %H:%M:%S",
+        datefmt="%Y-%m-%d %H:%M:%S.%f",
     )
 
-    simple_formatter = logging.Formatter(
-        fmt="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    simple_format = "%(asctime)s - %(levelname)s - %(message)s"
+    simple_datefmt = "%Y-%m-%d %H:%M:%S.%f"
 
-    # File handler - all logs
-    log_file = logs_dir / f"simulation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    file_handler = logging.handlers.RotatingFileHandler(
-        log_file, maxBytes=10_000_000, backupCount=5  # 10MB
-    )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(detailed_formatter)
-    logger.addHandler(file_handler)
-
-    # Error file handler - errors and warnings only
-    error_log_file = logs_dir / f"errors_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    error_handler = logging.handlers.RotatingFileHandler(
-        error_log_file, maxBytes=10_000_000, backupCount=5
-    )
-    error_handler.setLevel(logging.WARNING)
-    error_handler.setFormatter(detailed_formatter)
-    logger.addHandler(error_handler)
+    # Merged file handler - all logs in one file
+    merged_handler = _build_file_handler(logs_dir / "app.log", logging.DEBUG, detailed_formatter)
+    logger.addHandler(merged_handler)
 
     # Console handler - info and above
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(simple_formatter)
+    console_handler.setLevel(resolved_level)
+    console_handler.setFormatter(_AnsiColorFormatter(fmt=simple_format, datefmt=simple_datefmt))
     logger.addHandler(console_handler)
 
-    return logger
+    return logging.getLogger(name)
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -86,4 +128,4 @@ def get_logger(name: str) -> logging.Logger:
 
 
 # Global logger for the application
-app_logger = setup_logger("MicroserviceSimulation")
+app_logger = setup_logger(__name__)

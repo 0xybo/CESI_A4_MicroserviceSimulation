@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,21 @@ from .microservice_config import MicroserviceConfig
 
 
 class SimulationConfig(BaseModel):  # pylint: disable=missing-class-docstring
+    entrypoint: ConfigKey | None = Field(
+        default=None,
+        description="Root service called by external requests",
+    )
+    request_count: int = Field(
+        default=100,
+        ge=1,
+        alias="requestCount",
+        description="Default number of requests to use when testing the generated architecture",
+    )
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
+        default="INFO",
+        alias="logLevel",
+        description="Default logging level for the shared application logger",
+    )
     microservices: dict[ConfigKey, MicroserviceConfig] = Field(
         ...,
         description="All microservices in the simulation",

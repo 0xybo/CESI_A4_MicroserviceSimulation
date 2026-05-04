@@ -32,7 +32,7 @@ class Monitor(ABC):
         """
 
     @abstractmethod
-    def export_results(self, format: str = "json") -> str:
+    def export_results(self, fmt: str = "json") -> str:
         """Export all recorded data.
 
         Args:
