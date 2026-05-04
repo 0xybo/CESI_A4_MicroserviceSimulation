@@ -1,0 +1,198 @@
+{
+	"containers": {
+		"ContainerA": {
+			"cpuLimit": 0.5,
+			"services": {
+				"ServiceA": {
+					"canRestart": true
+				}
+			}
+		}
+	},
+	"entrypoint": "ServiceA",
+	"logLevel": "DEBUG",
+	"microservices": {
+		"A": {
+			"delay": 0,
+			"dependencies": {
+				"B": {
+					"callRate": 1,
+					"stopOnError": true
+				},
+				"E": {
+					"callRate": 1,
+					"stopOnError": false
+				},
+				"F": {
+					"callRate": 1,
+					"stopOnError": false
+				},
+				"G": {
+					"callRate": 1,
+					"stopOnError": false
+				},
+				"H": {
+					"callRate": 1,
+					"stopOnError": false
+				},
+				"I": {
+					"callRate": 1,
+					"stopOnError": false
+				},
+				"J": {
+					"callRate": 1,
+					"stopOnError": false
+				}
+			},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"B": {
+			"delay": 0,
+			"dependencies": {
+				"C": {
+					"callRate": 1,
+					"stopOnError": true
+				}
+			},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"C": {
+			"delay": 0,
+			"dependencies": {},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"D": {
+			"delay": 0,
+			"dependencies": {
+				"E": {
+					"callRate": 1,
+					"stopOnError": true
+				},
+				"F": {
+					"callRate": 1,
+					"stopOnError": false
+				},
+				"K": {
+					"callRate": 1,
+					"stopOnError": false
+				},
+				"L": {
+					"callRate": 1,
+					"stopOnError": false
+				}
+			},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"E": {
+			"delay": 0,
+			"dependencies": {},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"F": {
+			"delay": 0,
+			"dependencies": {},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"G": {
+			"delay": 0,
+			"dependencies": {},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"H": {
+			"delay": 0,
+			"dependencies": {
+				"C": {
+					"callRate": 1,
+					"stopOnError": true
+				}
+			},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"I": {
+			"delay": 0,
+			"dependencies": {},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"J": {
+			"delay": 0,
+			"dependencies": {
+				"C": {
+					"callRate": 1,
+					"stopOnError": true
+				},
+				"D": {
+					"callRate": 1,
+					"stopOnError": false
+				}
+			},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"K": {
+			"delay": 0,
+			"dependencies": {},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		},
+		"L": {
+			"delay": 0,
+			"dependencies": {},
+			"errorRate": 0.0,
+			"workDifficulty": 1
+		}
+	},
+	"requestCount": 100,
+	"services": {
+		"ServiceA": {
+			"dependencies": {},
+			"entrypoint": "A",
+			"microservices": {
+				"A": {
+					"canRestart": true
+				},
+				"B": {
+					"canRestart": true
+				},
+				"C": {
+					"canRestart": true
+				},
+				"D": {
+					"canRestart": true
+				},
+				"E": {
+					"canRestart": true
+				},
+				"F": {
+					"canRestart": true
+				},
+				"G": {
+					"canRestart": true
+				},
+				"H": {
+					"canRestart": true
+				},
+				"I": {
+					"canRestart": true
+				},
+				"J": {
+					"canRestart": true
+				},
+				"K": {
+					"canRestart": true
+				},
+				"L": {
+					"canRestart": true
+				}
+			}
+		}
+	}
+}
