@@ -1,0 +1,84 @@
+services:
+  ContainerA:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containera"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerA"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "6204:6204"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerB:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerb"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerB"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "6205:6205"
+      - "6206:6206"
+      - "6207:6207"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerC:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerc"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerC"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "6208:6208"
+      - "6209:6209"
+      - "6210:6210"
+      - "6211:6211"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerD:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerd"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerD"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "6212:6212"
+      - "6213:6213"
+      - "6214:6214"
+      - "6215:6215"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+networks:
+  simulation:
+    driver: bridge

@@ -1,0 +1,220 @@
+services:
+  ContainerA:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containera"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerA"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64438:64438"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerB:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerb"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerB"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64439:64439"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerC:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerc"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerC"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64440:64440"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerD:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerd"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerD"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64441:64441"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerE:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containere"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerE"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64442:64442"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerF:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerf"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerF"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64443:64443"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerG:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerg"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerG"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64444:64444"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerH:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerh"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerH"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64445:64445"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerI:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containeri"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerI"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64446:64446"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerJ:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerj"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerJ"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64447:64447"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerK:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerk"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerK"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64448:64448"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerL:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerl"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerL"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "64449:64449"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+networks:
+  simulation:
+    driver: bridge

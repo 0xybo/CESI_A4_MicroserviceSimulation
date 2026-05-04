@@ -1,0 +1,419 @@
+{
+  "entrypoint": "ServiceA",
+  "requestCount": 100,
+  "logLevel": "INFO",
+  "microservices": {
+    "A": {
+      "dependencies": {
+        "B": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "E": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "B": {
+      "dependencies": {
+        "I": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "K": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "C": {
+      "dependencies": {
+        "H": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "D": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "E": {
+      "dependencies": {
+        "F": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "H": {
+          "callRate": 1.0,
+          "stopOnError": false
+        },
+        "J": {
+          "callRate": 1.0,
+          "stopOnError": false
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "F": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "G": {
+      "dependencies": {
+        "L": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "H": {
+      "dependencies": {
+        "D": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "I": {
+      "dependencies": {
+        "C": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "D": {
+          "callRate": 1.0,
+          "stopOnError": false
+        },
+        "H": {
+          "callRate": 1.0,
+          "stopOnError": false
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "J": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "K": {
+      "dependencies": {
+        "G": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "L": {
+      "dependencies": {
+        "J": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    }
+  },
+  "services": {
+    "ServiceA": {
+      "entrypoint": "A",
+      "dependencies": {},
+      "microservices": {
+        "A": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceB": {
+      "entrypoint": "B",
+      "dependencies": {},
+      "microservices": {
+        "B": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceC": {
+      "entrypoint": "C",
+      "dependencies": {},
+      "microservices": {
+        "C": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceD": {
+      "entrypoint": "D",
+      "dependencies": {},
+      "microservices": {
+        "D": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceE": {
+      "entrypoint": "E",
+      "dependencies": {},
+      "microservices": {
+        "E": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceF": {
+      "entrypoint": "F",
+      "dependencies": {},
+      "microservices": {
+        "F": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceG": {
+      "entrypoint": "G",
+      "dependencies": {},
+      "microservices": {
+        "G": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceH": {
+      "entrypoint": "H",
+      "dependencies": {},
+      "microservices": {
+        "H": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceI": {
+      "entrypoint": "I",
+      "dependencies": {},
+      "microservices": {
+        "I": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceJ": {
+      "entrypoint": "J",
+      "dependencies": {},
+      "microservices": {
+        "J": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceK": {
+      "entrypoint": "K",
+      "dependencies": {},
+      "microservices": {
+        "K": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceL": {
+      "entrypoint": "L",
+      "dependencies": {},
+      "microservices": {
+        "L": {
+          "canRestart": true
+        }
+      }
+    }
+  },
+  "containers": {
+    "ContainerA": {
+      "services": {
+        "ServiceA": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerB": {
+      "services": {
+        "ServiceB": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerC": {
+      "services": {
+        "ServiceC": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerD": {
+      "services": {
+        "ServiceD": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerE": {
+      "services": {
+        "ServiceE": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerF": {
+      "services": {
+        "ServiceF": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerG": {
+      "services": {
+        "ServiceG": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerH": {
+      "services": {
+        "ServiceH": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerI": {
+      "services": {
+        "ServiceI": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerJ": {
+      "services": {
+        "ServiceJ": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerK": {
+      "services": {
+        "ServiceK": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    },
+    "ContainerL": {
+      "services": {
+        "ServiceL": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    }
+  },
+  "name": "6_microservices_fine_granularity_high_isolation",
+  "runtimeServiceEndpoints": {
+    "ServiceA": {
+      "container": "ContainerA",
+      "port": 23356,
+      "url": "http://127.0.0.1:23356"
+    },
+    "ServiceB": {
+      "container": "ContainerB",
+      "port": 23357,
+      "url": "http://127.0.0.1:23357"
+    },
+    "ServiceC": {
+      "container": "ContainerC",
+      "port": 23358,
+      "url": "http://127.0.0.1:23358"
+    },
+    "ServiceD": {
+      "container": "ContainerD",
+      "port": 23359,
+      "url": "http://127.0.0.1:23359"
+    },
+    "ServiceE": {
+      "container": "ContainerE",
+      "port": 23360,
+      "url": "http://127.0.0.1:23360"
+    },
+    "ServiceF": {
+      "container": "ContainerF",
+      "port": 23361,
+      "url": "http://127.0.0.1:23361"
+    },
+    "ServiceG": {
+      "container": "ContainerG",
+      "port": 23362,
+      "url": "http://127.0.0.1:23362"
+    },
+    "ServiceH": {
+      "container": "ContainerH",
+      "port": 23363,
+      "url": "http://127.0.0.1:23363"
+    },
+    "ServiceI": {
+      "container": "ContainerI",
+      "port": 23364,
+      "url": "http://127.0.0.1:23364"
+    },
+    "ServiceJ": {
+      "container": "ContainerJ",
+      "port": 23365,
+      "url": "http://127.0.0.1:23365"
+    },
+    "ServiceK": {
+      "container": "ContainerK",
+      "port": 23366,
+      "url": "http://127.0.0.1:23366"
+    },
+    "ServiceL": {
+      "container": "ContainerL",
+      "port": 23367,
+      "url": "http://127.0.0.1:23367"
+    }
+  }
+}

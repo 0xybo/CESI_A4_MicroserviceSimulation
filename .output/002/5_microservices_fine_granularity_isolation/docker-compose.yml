@@ -1,0 +1,84 @@
+services:
+  ContainerA:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containera"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerA"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "50369:50369"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerB:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerb"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerB"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "50370:50370"
+      - "50371:50371"
+      - "50372:50372"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerC:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerc"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerC"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "50373:50373"
+      - "50374:50374"
+      - "50375:50375"
+      - "50376:50376"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+  ContainerD:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containerd"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerD"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "50377:50377"
+      - "50378:50378"
+      - "50379:50379"
+      - "50380:50380"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+networks:
+  simulation:
+    driver: bridge

@@ -11,6 +11,13 @@
                     },
                     "title": "Services",
                     "type": "object"
+                },
+                "cpuLimit": {
+                    "default": 0.5,
+                    "description": "CPU limit to apply to the generated Docker Compose service",
+                    "exclusiveMinimum": 0,
+                    "title": "Cpulimit",
+                    "type": "number"
                 }
             },
             "required": [
@@ -98,6 +105,30 @@
         },
         "ServiceConfig": {
             "properties": {
+                "entrypoint": {
+                    "anyOf": [
+                        {
+                            "pattern": "^[a-zA-Z0-9_]+$",
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Name of the microservice to call at the beginning of a request; if omitted, the service can act as a client that only calls dependent services",
+                    "title": "Entrypoint"
+                },
+                "dependencies": {
+                    "description": "Services called by this service in order",
+                    "patternProperties": {
+                        "^[a-zA-Z0-9_]+$": {
+                            "$ref": "#/$defs/DependencyConfig"
+                        }
+                    },
+                    "title": "Dependencies",
+                    "type": "object"
+                },
                 "microservices": {
                     "description": "Microservices in this service",
                     "patternProperties": {
@@ -109,9 +140,6 @@
                     "type": "object"
                 }
             },
-            "required": [
-                "microservices"
-            ],
             "title": "ServiceConfig",
             "type": "object"
         },
@@ -131,6 +159,40 @@
         }
     },
     "properties": {
+        "entrypoint": {
+            "anyOf": [
+                {
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Root service called by external requests",
+            "title": "Entrypoint"
+        },
+        "requestCount": {
+            "default": 100,
+            "description": "Default number of requests to use when testing the generated architecture",
+            "minimum": 1,
+            "title": "Requestcount",
+            "type": "integer"
+        },
+        "logLevel": {
+            "default": "INFO",
+            "description": "Default logging level for the shared application logger",
+            "enum": [
+                "DEBUG",
+                "INFO",
+                "WARNING",
+                "ERROR",
+                "CRITICAL"
+            ],
+            "title": "Loglevel",
+            "type": "string"
+        },
         "microservices": {
             "description": "All microservices in the simulation",
             "patternProperties": {

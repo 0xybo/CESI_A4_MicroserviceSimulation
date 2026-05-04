@@ -1,30 +1,25 @@
-"""Docker Compose file generation for containerized simulations.
+"""Docker Compose build and test facade.
 
-This module provides functionality to generate docker-compose.yml files
-from simulation configurations for containerized deployment.
+This module re-exports the public functions from the split implementations
+so existing imports (from src.Docker.build import ...) keep working.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-from src.Docker.platform import DockerPlatform
+from typing import Any
 
+from src.Docker.compose_builder import build_docker_compose_file
+from src.Docker.compose_runner import (
+    run_docker_compose_file,
+    test_docker_compose_file,
+    test_all_docker_configs,
+    stop_docker_compose_file,
+)
 
-def build_docker_compose_file(
-    config_path: str | Path = "config-test.json", output_dir: str = ".output"
-) -> None:
-    """Build Docker Compose configuration file.
-
-    Validates Docker environment and generates docker-compose.yml from configuration.
-
-    Args:
-        config_path: Path to the simulation configuration.
-        output_dir: Output directory where docker-compose.yml will be written (default: .output).
-
-    Raises:
-        RuntimeError: If Docker is not available or build fails.
-    """
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    platform = DockerPlatform()
-    platform.build(str(config_path), str(output_dir))
+__all__ = [
+    "build_docker_compose_file",
+    "run_docker_compose_file",
+    "test_docker_compose_file",
+    "test_all_docker_configs",
+    "stop_docker_compose_file",
+]

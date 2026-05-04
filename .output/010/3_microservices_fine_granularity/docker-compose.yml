@@ -1,0 +1,33 @@
+services:
+  ContainerA:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    image: "containera"
+    working_dir: "/app"
+    command: ["python", "runtime_runner.py", "--config", "/app/config.json", "--container", "ContainerA"]
+    cpus: 0.5
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: "/app"
+    volumes:
+      - "./:/app"
+    ports:
+      - "1486:1486"
+      - "1487:1487"
+      - "1488:1488"
+      - "1489:1489"
+      - "1490:1490"
+      - "1491:1491"
+      - "1492:1492"
+      - "1493:1493"
+      - "1494:1494"
+      - "1495:1495"
+      - "1496:1496"
+      - "1497:1497"
+    networks:
+      - "simulation"
+    restart: "unless-stopped"
+networks:
+  simulation:
+    driver: bridge

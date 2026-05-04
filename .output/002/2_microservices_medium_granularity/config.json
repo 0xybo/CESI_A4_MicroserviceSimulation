@@ -1,0 +1,250 @@
+{
+  "entrypoint": "ServiceA",
+  "requestCount": 100,
+  "logLevel": "INFO",
+  "microservices": {
+    "A": {
+      "dependencies": {
+        "I": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "B": {
+      "dependencies": {
+        "L": {
+          "callRate": 1.0,
+          "stopOnError": false
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "C": {
+      "dependencies": {
+        "B": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "F": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "G": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "K": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "D": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "E": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "F": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "G": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "H": {
+      "dependencies": {
+        "D": {
+          "callRate": 1.0,
+          "stopOnError": false
+        },
+        "E": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "I": {
+      "dependencies": {
+        "C": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "H": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "J": {
+          "callRate": 1.0,
+          "stopOnError": true
+        },
+        "L": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "J": {
+      "dependencies": {
+        "E": {
+          "callRate": 1.0,
+          "stopOnError": false
+        },
+        "L": {
+          "callRate": 1.0,
+          "stopOnError": false
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "K": {
+      "dependencies": {
+        "D": {
+          "callRate": 1.0,
+          "stopOnError": true
+        }
+      },
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    },
+    "L": {
+      "dependencies": {},
+      "errorRate": 0.0,
+      "workDifficulty": 1.0,
+      "delay": 0
+    }
+  },
+  "services": {
+    "ServiceA": {
+      "entrypoint": "A",
+      "dependencies": {},
+      "microservices": {
+        "A": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceB": {
+      "entrypoint": "B",
+      "dependencies": {},
+      "microservices": {
+        "B": {
+          "canRestart": true
+        },
+        "C": {
+          "canRestart": true
+        },
+        "H": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceC": {
+      "entrypoint": "G",
+      "dependencies": {},
+      "microservices": {
+        "G": {
+          "canRestart": true
+        },
+        "I": {
+          "canRestart": true
+        },
+        "J": {
+          "canRestart": true
+        },
+        "D": {
+          "canRestart": true
+        }
+      }
+    },
+    "ServiceD": {
+      "entrypoint": "E",
+      "dependencies": {},
+      "microservices": {
+        "E": {
+          "canRestart": true
+        },
+        "F": {
+          "canRestart": true
+        },
+        "K": {
+          "canRestart": true
+        },
+        "L": {
+          "canRestart": true
+        }
+      }
+    }
+  },
+  "containers": {
+    "ContainerA": {
+      "services": {
+        "ServiceA": {
+          "canRestart": true
+        },
+        "ServiceB": {
+          "canRestart": true
+        },
+        "ServiceC": {
+          "canRestart": true
+        },
+        "ServiceD": {
+          "canRestart": true
+        }
+      },
+      "cpuLimit": 0.5
+    }
+  },
+  "name": "2_microservices_medium_granularity",
+  "runtimeServiceEndpoints": {
+    "ServiceA": {
+      "container": "ContainerA",
+      "port": 50364,
+      "url": "http://127.0.0.1:50364"
+    },
+    "ServiceB": {
+      "container": "ContainerA",
+      "port": 50365,
+      "url": "http://127.0.0.1:50365"
+    },
+    "ServiceC": {
+      "container": "ContainerA",
+      "port": 50366,
+      "url": "http://127.0.0.1:50366"
+    },
+    "ServiceD": {
+      "container": "ContainerA",
+      "port": 50367,
+      "url": "http://127.0.0.1:50367"
+    }
+  }
+}

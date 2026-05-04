@@ -1,3 +1,10 @@
+> [!warning] Attention
+> Ce projet est massivement "vibe codé" (c'est à dire que le code a été écrit majoritaire par un outil IA, en l'occurence, Github Copilot). Par conséquent, je recommande fortement de ne pas se baser sur ce projet. En effet, je ne connais pas tous les détails de son implémentation, et il est fort probable que le code contienne des erreurs, des incohérences, ou des choix d'implémentation discutables. De plus, le code généré par une IA peut être difficile à comprendre et à maintenir, surtout si vous n'avez pas une connaissance approfondie du projet.
+>
+> J'ai réalisé ce projet dans le cadre d'un module d'enseignement en école d'ingénieur, et il a été conçu trop rapidement et principalement pour illustrer des concepts et des idées, plutôt que pour être utilisé comme une base de code solide.
+>
+> Je ne m'attribue pas la paternité du code, et je ne peux pas garantir sa qualité ou sa fiabilité. Si vous souhaitez utiliser ce projet comme référence, je vous encourage à l'examiner attentivement, à comprendre son fonctionnement, et à le modifier ou l'améliorer selon vos besoins.
+
 Ce projet est la partie simulation de l'application à la démarche scientifique, un module d'enseignement en école d'ingénieur dont l'object est de découvrir le processus de recherche.
 
 Titre : Influence de la granularité des microservices et de leur déploiement conteneurisé sur les performances d’une application distribuée simulée
@@ -168,3 +175,75 @@ python -m Docker.main --config config-test.json --output Docker/docker-compose.g
 ```
 
 Le fichier genere decrit les conteneurs logiques declares dans la configuration.
+
+## Generer et tester plusieurs architectures
+
+Les architectures generees sont stockees sous la forme suivante :
+
+```text
+.output/<id>/<niveau>/config.json
+```
+
+Exemple :
+
+```text
+.output/1/1_monolithic/config.json
+```
+
+Pour generer plusieurs architectures, puis creer les 6 niveaux de configuration pour chacune :
+
+```bash
+python -m src generate-configs --count 10 --output .output
+```
+
+Pour tester toutes les configurations presentes dans `.output` :
+
+```bash
+python -m src test-all --output .output
+```
+
+Chaque configuration est d'abord preparee dans son dossier, puis testee avec la commande Docker existante. Utilisez `--requests` pour forcer un nombre de requetes identique sur tous les niveaux.
+
+Pour generer des graphiques a partir de tous les fichiers `result_<N>.csv` présents dans `.output` :
+
+```bash
+python -m src plot-results --output .output
+```
+
+Par defaut, la commande cree 6 graphiques en lignes, un par niveau d'architecture. Chaque graphique compare le taux d'echec, la consommation CPU moyenne et la duree moyenne de reponse en fonction du nombre de requetes.
+
+Pour generer 3 graphiques en barres au lieu des lignes :
+
+```bash
+python -m src plot-results --output .output --plot-type bar
+```
+
+Dans ce mode, chaque graphique correspond a un metric et affiche 6 barres combinees par nombre de requetes, une par niveau d'architecture.
+
+## Logging
+
+The application includes a comprehensive logging system that tracks execution across all components. The default level can be set in the configuration file with `logLevel`:
+
+- **Log Location**: `.logs/` folder in the project root
+- **Log Levels**: DEBUG, INFO, WARNING, ERROR
+- **Files**:
+    - `simulation.log` - Complete logs at all levels
+    - `error.log` - Errors and warnings only
+    - Console output - INFO level and above
+
+For Docker runs, container stdout and stderr are redirected into shared runtime logs at `.output/<run-name>/logs/<run-name>/simulation.log` and `.output/<run-name>/logs/<run-name>/error.log`, where `<run-name>` comes from the generated `config.json` `name` field.
+
+For detailed logging documentation and usage examples, see [LOGGING.md](LOGGING.md)
+
+### View Logs
+
+```bash
+# View simulation log
+tail -f .logs/simulation.log
+
+# View errors only
+tail -f .logs/error.log
+
+# Search for specific events
+grep "microservice_name" .logs/*.log
+```
