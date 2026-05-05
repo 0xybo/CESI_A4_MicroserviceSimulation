@@ -151,7 +151,12 @@ def print_docker_results(
 
             with csv_path.open("w", encoding="utf-8", newline="") as csv_file:
                 writer = _csv.writer(csv_file)
-                writer.writerow(["Level"] + [str(rc) for rc in all_request_counts])
+                # CSV header: Level, then for each request count: "rc" and "rc_std"
+                csv_header = ["Level"]
+                for rc in all_request_counts:
+                    csv_header.append(str(rc))
+                    csv_header.append(f"{rc}_std")
+                writer.writerow(csv_header)
 
                 # Rows
                 for row_idx, row in enumerate(rows):
@@ -166,13 +171,16 @@ def print_docker_results(
                             mw = mean_w[i - 1]
                             sw = std_w[i - 1]
                             cw = cnt_w[i - 1]
-                            csv_text = f"{m} ({s}) [{c}]"
                             disp_text = f"{m.rjust(mw)} ({s.rjust(sw)}) [{c.rjust(cw)}]"
+                            # CSV: add mean and std as separate columns
+                            csv_cells.append(m)
+                            csv_cells.append(s)
                         else:
-                            csv_text = str(cell)
                             disp_text = str(cell).center(total_col_w[i])
+                            # CSV: add single value and empty std
+                            csv_cells.append(str(cell))
+                            csv_cells.append("")
 
-                        csv_cells.append(csv_text)
                         display_cells.append(disp_text)
 
                     line = " | ".join(display_cells)
